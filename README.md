@@ -87,8 +87,8 @@ regular/executable references with no symlink/submodule component. Its direct
 tree evidence is caller-supplied. The separate acquirer obtains bounded
 revision, index or tracked working evidence and returns that same TreeSnapshot
 with accepted Python results. The five manifest enum sets are owner-adopted
-and checked; the [development-policy freeze proposal](docs/validation-candidate.md#proposed-development-policy-freeze)
-remains candidate-unapproved. Activation owner uses none/direnv/mise/project
+and checked; the [development contract policy](docs/validation-candidate.md#proposed-development-policy-freeze)
+was frozen by the owner on 2026-10-13. Complete release approval remains separate. Activation owner uses none/direnv/mise/project
 independently from template/launcher presence. The separately trusted bootstrap
 checks a closed externally anchored byte-binding candidate before payload import. Fresh installed-loader
 comparisons are bounded evidence, not complete release qualification. Producer

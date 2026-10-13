@@ -87,25 +87,26 @@ it does not itself establish that a destination is public or reachable.
 ## Other vocabularies and remaining authority
 
 The development shape uses separate platform, runner, activation-owner, stack
-and requirement vocabularies. C2 implements explicit candidate defaults for
-script/mise, host/checkout, unpublished/loopback_only and
-container_engine/android_sdk. These development sets and their consumer semantics
-remain pending release-policy approval. Candidate platform membership is the
+and requirement vocabularies. The owner froze the implemented literal sets
+and rules as contract policy on 2026-10-13: script/mise, host/checkout,
+unpublished/loopback_only and container_engine/android_sdk. Actual consumer
+behavior and complete immutable release approval remain separate. Platform
+membership is the
 six determinate combinations of OS macos/linux/windows and architecture
 arm64/x86_64: macos-arm64, macos-x86_64, linux-arm64, linux-x86_64,
 windows-arm64 and windows-x86_64. These generic axes impose no pair limits;
-combined spelling and exclusion of unknown are specification candidate policy.
+combined spelling and exclusion of unknown are owner-frozen contract policy.
 Empty means no platform claim, never host observation or portability proof.
-C4 checks the closed activation/non-secret-loading set none/direnv/mise/project.
-Native is not an alias; no per-tool dependency owner is introduced. These
-development values remain candidate policy awaiting release approval.
+The declaration API checks the frozen activation/non-secret-loading set
+none/direnv/mise/project. Native is not an alias; no per-tool dependency owner
+is introduced. Contract policy acceptance grants no native activation proof.
 
 General tokens allow single hyphens or underscores. The concrete
-[development-policy freeze proposal](validation-candidate.md#proposed-development-policy-freeze)
+[owner-frozen development policy](validation-candidate.md#proposed-development-policy-freeze)
 retains implemented literal underscore-bearing values rather than a blanket
-kebab-only rule. No alias or hidden normalization is proposed. An incompatible
-hyphen-only alternative is a separate owner decision with compatibility/release
-review; neither proposal is silently treated as an adopted freeze.
+kebab-only rule. No alias or hidden normalization is permitted. Any future
+incompatible spelling change is a new owner decision with compatibility/
+release review, not a style-only update.
 
 
 The complete release must bind specification, fields, this adopted snapshot,

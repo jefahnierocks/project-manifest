@@ -68,6 +68,13 @@ class CliTests(unittest.TestCase):
         self.assertEqual(result.stderr, b"")
         report = json.loads(result.stdout)
         self.assertTrue(report["candidate_declaration_accepted"])
+        self.assertEqual(report["vocabulary_state"]["development_policy"],
+                         "owner-frozen-contract-policy")
+        self.assertEqual(report["vocabulary_state"]["development_policy_approval_date"],
+                         "2026-10-13")
+        self.assertNotIn("development_vocabulary_approval", report["checks_remaining"])
+        self.assertIn("release_binding", report["checks_remaining"])
+        self.assertIn("native_task_and_declaration_conformance", report["checks_remaining"])
         self.assertEqual(report["mode"], "rev")
         self.assertEqual(report["complete_v1_validity"], "not_checked")
         self.assertNotIn("record", report)

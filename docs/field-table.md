@@ -23,7 +23,7 @@ acquires bounded same-observation records; it grants no execution authority.
 | project.owner_entity | Token, 1-64 bytes | Declared entity; membership is producer-owned. |
 | role | Token, 1-64 bytes | C2 checks the owner-adopted role set; no inferred role. |
 | canonical | Token, 1-64 bytes, or null; always present | Selected uniform key. Must be null exactly for canonical role; otherwise an ID differing from own id. C2 checks these relations; alternate presence is not proposed. |
-| peers | Token list; C1 preserves order/duplicates, C2 rejects duplicates | C2 excludes own id and duplicate peers; producer owns cross-project relationships. Duplicate policy awaits freeze approval. |
+| peers | Token list; C1 preserves order/duplicates, C2 rejects duplicates | C2 excludes own id and duplicate peers; producer owns cross-project relationships. Duplicate refusal is owner-frozen contract policy. |
 | status | Exactly posture, operational_state, local_phase, as_of | Status summary without ledger/receipt extension keys. |
 | status.posture | Token, 1-64 bytes | C2 checks the owner-adopted posture set; release binding remains. |
 | status.operational_state | Token, 1-64 bytes | C2 checks the required owner-adopted operational-state set. |
@@ -36,7 +36,7 @@ acquires bounded same-observation records; it grants no execution authority.
 | presentation.public_alias | Quoted text, 1-100 bytes, or null | Null means no alternate label; quoted null remains a label. |
 | presentation.link_policy | Token, 1-64 bytes | C2 checks the owner-adopted link-policy set. |
 | development | Exactly platforms, commands, environment, stacks, host_requirements | Full selected shape; all keys remain even without a development server. |
-| development.platforms | Token list; C1 preserves order/duplicates, C2 rejects duplicates | Six determinate macos/linux/windows plus arm64/x86_64 candidate tokens. Combined spelling and unknown exclusion are candidate policy, never pair restrictions, host observation or portability proof. Empty remains no claim; identify the pilot consumer. |
+| development.platforms | Token list; C1 preserves order/duplicates, C2 rejects duplicates | Six determinate macos/linux/windows plus arm64/x86_64 frozen tokens. Combined spelling and unknown exclusion are accepted contract policy, never pair restrictions, host observation or portability proof. Empty remains no claim; identify the pilot consumer. |
 | development.commands | Exactly setup, check, test, build, dev, format_check, format_write | Native command roles, never executable authorization. |
 | development.commands.setup | Closed runner/target record or null | Prepare local development; null means inapplicable. Exact role effects/conformance pending. |
 | development.commands.check | Closed runner/target record; null forbidden | Secretless source acceptance entrypoint. C2 checks script references in supplied tree records; native task existence and secretless behavior remain conformance. |
@@ -45,18 +45,18 @@ acquires bounded same-observation records; it grants no execution authority.
 | development.commands.dev | Closed runner/target record or null | Development workflow; concurrency/runtime safety not implied. |
 | development.commands.format_check | Closed runner/target record or null | Formatting verification; effect contract pending. |
 | development.commands.format_write | Closed runner/target record or null | Formatting mutation; invocation still requires project authority. |
-| development.commands.ROLE.runner | Token, 1-64 bytes | C2 supports candidate script/mise semantics; approved pilot vocabulary remains pending. |
-| development.commands.ROLE.target | C1 quoted text, 1-255 bytes; C2 script path 255 or mise task 64 | Script means tracked executable path; mise means native task, maximum 64 bytes; every other runner is unsupported. C2 checks candidate bounds/spelling/argv exclusion and script executable tree mode; native task existence and effects remain conformance. |
+| development.commands.ROLE.runner | Token, 1-64 bytes | C2 checks owner-frozen script/mise contract semantics; native task and pilot acceptance remain separate. |
+| development.commands.ROLE.target | C1 quoted text, 1-255 bytes; C2 script path 255 or mise task 64 | Script means tracked executable path; mise means native task, maximum 64 bytes; every other runner is unsupported. C2 checks frozen contract bounds/spelling/argv exclusion and script executable tree mode; native task existence and effects remain conformance. |
 | development.environment | Exactly owner, template, secret_launcher | Owner is activation and non-secret configuration loading, not every tool/dependency environment. |
-| development.environment.owner | Token, 1-64 bytes | The declaration API checks none/direnv/mise/project for activation and non-secret loading; native is not an alias. Runtime/dependency ownership remains independent; behavioral conformance and release-policy approval remain separate. |
+| development.environment.owner | Token, 1-64 bytes | The declaration API checks none/direnv/mise/project for activation and non-secret loading; native is not an alias. Runtime/dependency ownership remains independent; contract policy was accepted on 2026-10-13; behavioral conformance and complete release approval remain separate. |
 | development.environment.template | Quoted lexical relative path, 1-255 bytes, or null | Null means absent; C2 checks supplied regular-file records; C3 supports bounded acquisition. |
 | development.environment.secret_launcher | Quoted lexical relative path, 1-255 bytes, or null | Null means no role consumes secrets. C2 requires a portable regular executable reference. Role/secret-use conformance remains pending; C3 supports bounded acquisition and never delivers a value. |
-| development.stacks | Dynamic token-keyed closed records; empty map allowed | Nonempty stacks require container-engine declaration; C2 checks the container_engine implication; vocabulary still needs approval. |
-| development.stacks.NAME | Exactly compose, instance_scope, port_policy | Candidate literal policy key port_policy needs freeze confirmation. No arbitrary stack extensions. |
+| development.stacks | Dynamic token-keyed closed records; empty map allowed | Nonempty stacks require container-engine declaration; C2 checks the owner-frozen container_engine implication; actual engine capability remains separate. |
+| development.stacks.NAME | Exactly compose, instance_scope, port_policy | The literal port_policy key is frozen contract policy. No arbitrary stack extensions. |
 | development.stacks.NAME.compose | Quoted lexical relative path, 1-255 bytes | Tracked Compose file, no interpolation or engine probe. C2 checks supplied regular-file records; C3 acquisition is bounded; Compose conformance remains pending. |
-| development.stacks.NAME.instance_scope | Token, 1-64 bytes | C2 supports candidate host/checkout scope; approved vocabulary remains pending. Checkout scope alone does not prove concurrency. |
-| development.stacks.NAME.port_policy | Token, 1-64 bytes | C2 supports candidate unpublished/loopback_only policy; literal vocabulary/spelling approval remains pending. No wider exposure value is invented. |
-| development.host_requirements | Token list; C1 preserves order/duplicates, C2 rejects duplicates | Small consumer-driven vocabulary; engine/Android concepts are proposals, not kernel Capability records or allocated resources. C2 implements candidate container_engine/android_sdk, stack implication and duplicate rejection; consumers/value/spelling approval remain pending. |
+| development.stacks.NAME.instance_scope | Token, 1-64 bytes | C2 checks owner-frozen host/checkout scope. Checkout scope alone does not prove concurrency. |
+| development.stacks.NAME.port_policy | Token, 1-64 bytes | C2 checks owner-frozen unpublished/loopback_only literals; actual port exposure remains consumer/runtime acceptance. No wider exposure value is invented. |
+| development.host_requirements | Token list; C1 preserves order/duplicates, C2 rejects duplicates | The owner-frozen container_engine/android_sdk vocabulary declares requirements, not kernel Capability records or allocated resources. C2 checks the frozen stack implication and duplicate refusal; actual consumer/host readiness remains separate. |
 
 ## Absence, types and paths
 
@@ -72,9 +72,9 @@ or grants execution through acceptance.
 
 ## Remaining declaration authority and separate acceptance
 
-The [concrete development-policy freeze proposal](validation-candidate.md#proposed-development-policy-freeze)
-retains current literal values and reference/task/list/stack/activation semantics;
-owner approval remains required. The selected uniform canonical and full
+The owner accepted the [development contract policy](validation-candidate.md#proposed-development-policy-freeze)
+on 2026-10-13, freezing current literal values and reference/task/list/stack/
+activation semantics. Complete release and actual acceptance remain separate. The selected uniform canonical and full
 development shape, adopted five-domain snapshot, calendar replay and pure tree
 checks are not reopened. The [corpus map](validation-candidate.md#declaration-corpus-coverage)
 distinguishes inspected positive, negative and limit fixtures.

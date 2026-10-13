@@ -132,7 +132,8 @@ commits, real project manifests or producer inventory. Successful fixtures are
 removed after outcome; unexpected failures retain owned roots and stop the gate.
 Earlier C2 passes never qualify amended C3 source.
 
-Development-policy approval, activation/native conformance, broader
+Development contract policy is owner-frozen as of 2026-10-13.
+Activation/native conformance, broader
 runtime/cross-loader qualification, complete release binding, offline vendoring,
 producer admission and live acceptance remain separate.
 

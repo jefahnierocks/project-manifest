@@ -64,7 +64,8 @@ class DeclarationTests(unittest.TestCase):
         self.assertEqual(result.diagnostics()["tree_observation"], "caller-supplied-unverified")
         self.assertEqual(result.diagnostics()["vocabulary_state"], {
             "manifest_domains": "owner-adopted-generic-snapshot",
-            "development_policy": "candidate-unapproved",
+            "development_policy": "owner-frozen-contract-policy",
+            "development_policy_approval_date": "2026-10-13",
         })
         self.assertNotIn("record", result.diagnostics())
         return result
@@ -108,6 +109,20 @@ class DeclarationTests(unittest.TestCase):
                         if launcher:
                             data = changed(b"    secret_launcher: null\n", b'    secret_launcher: "tools/environment.example"\n', data)
                         self.accepted(data, tree=tree)
+
+    def test_policy_approval_is_not_release_native_or_runtime_acceptance(self):
+        report = self.accepted().diagnostics()
+        self.assertEqual(report["vocabulary_state"]["development_policy"],
+                         "owner-frozen-contract-policy")
+        self.assertEqual(report["vocabulary_state"]["development_policy_approval_date"],
+                         "2026-10-13")
+        self.assertNotIn("development_vocabulary_approval", report["checks_remaining"])
+        for check in ("release_runtime_qualification", "release_binding",
+                      "native_task_and_declaration_conformance", "producer_admission",
+                      "runtime_acceptance"):
+            self.assertIn(check, report["checks_remaining"])
+        self.assertEqual(report["complete_v1_validity"], "not_checked")
+        self.assertEqual(report["tree_observation"], "caller-supplied-unverified")
 
     def test_calendar_dates_and_future_boundary(self):
         for value in (b"0000-01-01", b"2026-00-01", b"2026-13-01", b"2026-01-00",

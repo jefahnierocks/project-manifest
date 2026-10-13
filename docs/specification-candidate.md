@@ -65,8 +65,9 @@ A scalar is one of:
   items, such as `[example-one, example_two]`. There are no edge spaces.
 - `{}`, an empty mapping, accepted only where the shape permits it.
 
-List order and duplicate items are preserved. Uniqueness rules await freeze
-review. Empty collections must use their explicit spelling; bare empty
+This byte API preserves list order and duplicate items. The separately
+approved declaration policy rejects peer/platform/requirement duplicates and
+preserves order; the owner froze that policy on 2026-10-13. Empty collections must use their explicit spelling; bare empty
 mapping openers and alternate spaced flow empties are invalid.
 
 Duplicate keys, unknown keys and missing required keys are rejected.
@@ -85,8 +86,9 @@ launcher can be null. The check role must be a record.
 Text bounds are 1 through 100 bytes for display names and aliases; 1 through
 400 for the phase; and 1 through 255 for path fields. All tokens are bounded
 at 64. Command targets receive a provisional 1 through 255 text bound only:
-the final runner-specific task maximum of 64, task spelling, script-path
-interpretation and argv prohibition are not implemented.
+the owner-frozen runner-specific task maximum of 64, task spelling, script-
+path interpretation and argv prohibition belong to the separate declaration
+API and are not implemented by this byte-only API.
 
 Date text is exactly the lexical pattern `[0-9]{4}-[0-9]{2}-[0-9]{2}`.
 Calendar validity, an explicit UTC reference date and future-date rejection
@@ -97,8 +99,9 @@ drive-prefixed paths, dot, dot-dot and exact lowercase .git segments fail.
 Segments cannot have edge spaces. This is case-sensitive lexical checking:
 case variants such as .GIT are not silently canonicalized. No tree lookup,
 existence, exact-case resolution, tracked/regular-file test, symlink/submodule
-inspection or executability check occurs. The reserved-segment case policy
-needs freeze review.
+inspection or executability check occurs in this byte API. The declaration
+API separately enforces the owner-frozen case-insensitive .git reservation
+and exact tree-reference rules; that policy was accepted on 2026-10-13.
 
 ## API and findings
 
@@ -140,17 +143,17 @@ failure appears first.
 
 The selected intended contract uses canonical uniformly, with null exactly
 for canonical role, and the full development shape. Those selected decisions
-are not reopened by the reader's incomplete semantic checks. Before freeze:
+are not reopened by the reader's scope limits. The owner froze the reviewed
+development contract policy on 2026-10-13; complete release work remains:
 
-- Bind the owner-adopted five-domain snapshot into the complete release;
-  approve the [concrete development-policy proposal](validation-candidate.md#proposed-development-policy-freeze),
-  retaining exact implemented literals unless the owner selects a distinct alternative.
+- Bind the adopted five-domain snapshot and [frozen development policy](validation-candidate.md#proposed-development-policy-freeze)
+  into the complete immutable release; source policy approval is not release approval.
 - Integrate the source-confirmed legacy rejection with the producer dispatch contract.
-- Review C2's implemented calendar/reference-date, canonical/self/peer rules
-  and candidate list-uniqueness policy for freeze.
-- Approve C2's candidate runner/task/path/executable rules and remaining
-  activation owner set none/direnv/mise/project and role conformance; confirm the literal stack policy key
-  `port_policy`, platform-empty meaning and requirement implications.
+- Preserve implemented calendar/reference-date and settled canonical/self/peer
+  relations; qualification of the complete normative/runtime envelope remains separate.
+- Qualify native role/task/activation and Compose safety in project/consumer
+  acceptance. Frozen declaration rules for targets, literals and references
+  never execute project code or prove those effects.
 - Name the first pilot consumer for platforms, stacks and host requirements.
   Platform claims do not prove portability; unsupported host operations are
   neither inferred nor invoked.

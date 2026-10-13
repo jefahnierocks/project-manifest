@@ -336,7 +336,7 @@ def main():
     print("Index coverage: unchanged committed baseline; no candidate index qualification"
           if baseline_index else "Index coverage: full candidate source and syntax/shape corpus")
     print("C4 activation/trusted candidate byte binding; complete v1 validity not checked")
-    print("Broader acquisition, vocabulary/conformance and release approval remain unqualified")
+    print("Development policy owner-frozen; broader acquisition/conformance and release remain unqualified")
 
 
 if __name__ == "__main__":

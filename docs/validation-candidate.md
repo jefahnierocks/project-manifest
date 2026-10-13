@@ -58,7 +58,8 @@ checks candidate membership in macos-arm64, macos-x86_64, linux-arm64, linux-x86
 windows-arm64 and windows-x86_64. Unknown-axis tokens are excluded by
 candidate policy; the generic axes themselves provide no pair restriction.
 Activation-owner membership is implemented for none/direnv/mise/project;
-release-policy approval and actual activation behavior remain separate.
+the owner froze this contract policy on 2026-10-13; actual activation behavior
+and complete release approval remain separate.
 
 The producer runtime floor is Python 3.11+, so the declaration API uses that
 candidate floor and returns not checked below it when import is possible.
@@ -70,8 +71,8 @@ annotations on unsupported runtimes; branch simulation is not a live receipt.
 
 ## Candidate development policy
 
-These closed sets implement candidate policy from the design; they are not
-approved release enum snapshots:
+The owner froze these exact closed sets as contract policy on 2026-10-13.
+They are not an approved complete immutable release:
 
 | Field | Candidate policy |
 | --- | --- |
@@ -117,10 +118,12 @@ effects require separate native-file conformance; mise is never evaluated.
 
 ## Proposed development-policy freeze
 
-This is one concrete freeze recommendation, not owner approval. Retain the exact
-implemented literal sets and bounds rather than introducing incompatible aliases:
+The owner accepted the exact reviewed table below on **2026-10-13** as
+contract policy. The historical heading is retained for stable section links.
+This decision does not approve a release, publication, migration or runtime
+acceptance. The frozen literal sets and bounds are:
 
-| Decision | Proposed frozen rule |
+| Decision | Accepted contract rule |
 | --- | --- |
 | Platform tokens | macos-arm64, macos-x86_64, linux-arm64, linux-x86_64, windows-arm64, windows-x86_64; empty means no platform claim |
 | Runner tokens | script or mise; every non-null command role uses the same runner-specific rules |
@@ -133,13 +136,13 @@ implemented literal sets and bounds rather than introducing incompatible aliases
 | Token spelling | Retain current literal underscore-bearing values, including container_engine, android_sdk and loopback_only; no blanket kebab-only restriction |
 
 General bare tokens continue to allow single hyphen or underscore separators.
-Closed sets require exact literal membership; no aliases, case folding or hidden
-normalization are proposed. An alternative replacing existing underscores with
-hyphens is a distinct owner decision requiring compatibility and release review,
-not a style-only edit. The five generic manifest domains, uniform canonical
+Closed sets require exact literal membership; aliases, case folding and hidden
+normalization are excluded. A future replacement of existing underscores with
+hyphens requires a new owner decision with compatibility and release review. The five generic manifest domains, uniform canonical
 relation and full development shape are settled and are not reopened here.
-These development defaults remain candidate-unapproved until the owner freezes
-them. Native task/effect/activation and Compose safety acceptance are not implied.
+These development rules are owner-frozen contract policy. Native task/effect/
+activation and Compose safety acceptance are not implied; complete release
+and pilot/runtime acceptance remain separate.
 
 
 ## Exact-tree references
@@ -206,8 +209,8 @@ structure and references in fixed order. Semantic/tree findings have zero
 line/column; predefined fields and wildcard stack classes never echo values.
 
 `diagnostics()` excludes the record, labels caller-supplied-unverified tree
-evidence, owner-adopted manifest domains and separate candidate-unapproved
-development policy, and always returns
+evidence, owner-adopted manifest domains and owner-frozen contract policy with
+its 2026-10-13 approval date, and always returns
 `complete_v1_validity: not_checked`. Input-derived records remain data,
 not safe diagnostic output.
 
@@ -216,9 +219,9 @@ FIELD_RELATION, ENUM_UNSUPPORTED, TARGET_RULE, REFERENCE_MISSING and
 REFERENCE_MODE; FIELD_BOUND, REFERENCE_PATH and NOT_CHECKED retain their
 candidate meanings. These are not published compatibility identifiers.
 
-Remaining declaration authority is the explicit development-policy freeze;
-any subsequently selected missing validity rule requires its own source/corpus
-delta. Native task existence, role effects, secretless check, activation behavior
+The development-policy freeze is settled by the 2026-10-13 owner decision.
+Any subsequently selected missing validity rule or policy change requires its
+own owner-approved source/corpus delta. Native task existence, role effects, secretless check, activation behavior
 and Compose runtime safety belong to project/consumer acceptance, not execution
 inside the validator. Producer legacy dispatch and cross-project identity/join
 invariance remain producer-owned.

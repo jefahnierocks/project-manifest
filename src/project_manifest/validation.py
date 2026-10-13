@@ -26,7 +26,8 @@ MANIFEST_ENUMS = MappingProxyType({
     }),
     "presentation.link_policy": frozenset({"link-ok", "no-link"}),
 })
-# Separate development defaults still require freeze approval.
+# Owner-frozen contract policy; complete immutable release remains separate.
+DEVELOPMENT_POLICY_APPROVAL_DATE = "2026-10-13"
 PLATFORMS = frozenset({
     "macos-arm64", "macos-x86_64", "linux-arm64", "linux-x86_64",
     "windows-arm64", "windows-x86_64",
@@ -40,7 +41,7 @@ TASK_PART = r"[a-z][a-z0-9]*(?:[-_][a-z0-9]+)*"
 TASK = re.compile(TASK_PART + r"(?::" + TASK_PART + r")*", re.ASCII)
 EXECUTABLE_PATH = re.compile(r"[A-Za-z0-9._/-]+", re.ASCII)
 REMAINING = (
-    "development_vocabulary_approval", "release_runtime_qualification",
+    "release_runtime_qualification",
     "producer_legacy_dispatch", "cross_loader_agreement", "git_observation_acquisition",
     "release_binding", "native_task_and_declaration_conformance",
     "producer_admission", "runtime_acceptance",
@@ -83,7 +84,8 @@ class DeclarationResult:
             "tree_observation": "caller-supplied-unverified",
             "vocabulary_state": {
                 "manifest_domains": "owner-adopted-generic-snapshot",
-                "development_policy": "candidate-unapproved",
+                "development_policy": "owner-frozen-contract-policy",
+                "development_policy_approval_date": DEVELOPMENT_POLICY_APPROVAL_DATE,
             },
             "exit_code": self.exit_code,
             "reference_date": self.reference_date,

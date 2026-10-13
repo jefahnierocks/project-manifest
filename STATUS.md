@@ -17,9 +17,9 @@ not substitutes for qualification of current bytes. Staging source does not
 invalidate this status description.
 
 The five generic manifest domains, uniform canonical relation and full
-development shape are settled. Remaining development semantics and literal
-spelling have a [concrete freeze proposal](docs/validation-candidate.md#proposed-development-policy-freeze),
-which remains candidate-unapproved until the owner freezes it. Empty platforms
+development shape are settled. The owner froze the reviewed development
+semantics and literal spellings as [contract policy](docs/validation-candidate.md#proposed-development-policy-freeze)
+on 2026-10-13; complete release approval and actual acceptance remain separate. Empty platforms
 declares no platform claim; platform tokens are not host observation or
 portability proof. [Declaration corpus coverage](docs/validation-candidate.md#declaration-corpus-coverage)
 records inspected byte/semantic/tree fixtures and their acceptance boundaries.
