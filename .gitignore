@@ -1,0 +1,14 @@
+private/
+.cache/
+__pycache__/
+*.pyc
+/build/
+/dist/
+/mise.local.toml
+/mise.local.lock
+/mise.*.local.toml
+/mise.*.local.lock
+/.mise/locks/mise.local/
+/.env
+/.env.*
+.DS_Store
