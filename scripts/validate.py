@@ -1,4 +1,4 @@
-"""Bootstrap intake checks; no parser, corpus or release validation."""
+"""Source safety and pure candidate corpus; never full v1 validation."""
 
 import ast
 import configparser
@@ -15,10 +15,24 @@ from urllib.parse import unquote, urlsplit
 ROOT = Path(__file__).absolute().parent.parent
 PINS = {"python": "3.13.16", "gitleaks": "8.30.1"}
 BACKENDS = {"python": "core:python", "gitleaks": "aqua:gitleaks/gitleaks"}
-FILES = {
+BASELINE_FILES = {
     "README.md", "AGENTS.md", "CLAUDE.md", "STATUS.md", "LICENSE",
     ".editorconfig", ".gitignore", "mise.toml", "mise.lock", "scripts/validate.py",
 }
+CANDIDATE_FILES = {
+    "docs/specification-candidate.md", "docs/field-table.md",
+    "docs/enum-provenance.md", "src/project_manifest/__init__.py",
+    "src/project_manifest/candidate.py", "tests/test_candidate.py",
+    "src/project_manifest/validation.py", "tests/test_validation.py",
+    "docs/validation-candidate.md", "docs/acquisition-candidate.md",
+    "src/project_manifest/acquire.py", "src/project_manifest/cli.py",
+    "src/project_manifest/__main__.py", "tests/acquisition_fixtures.py",
+    "tests/test_acquisition.py", "tests/test_cli.py",
+    "bootstrap/release_verifier.py", "tests/test_binding.py",
+    "docs/offline-binding-candidate.md", "tests/run_corpus.py",
+    "tests/compare_loaders.py",
+}
+FILES = BASELINE_FILES | CANDIDATE_FILES
 PRIVATE_DATA = re.compile(
     r"/(?:Users|home)/|~[/\\]|[A-Za-z]:\\Users\\|"
     r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b|"
@@ -121,8 +135,8 @@ def check_python_syntax(text):
         raise GateError("Invalid Python source syntax") from None
 
 
-def check_bundle(bundle):
-    require(set(bundle) == FILES, "Bootstrap source layout is not complete/closed")
+def check_bundle(bundle, expected_files=FILES):
+    require(set(bundle) == expected_files, "Intended source layout is not complete/closed")
     texts = {name: check_text(name, data) for name, data in bundle.items()}
     agents = texts["AGENTS.md"]
     for declaration in (
@@ -177,7 +191,9 @@ def check_bundle(bundle):
                 and not url.username and not url.password and not url.query
                 and not url.fragment and version in url.path,
                 "Locked artifact URL is not the expected public release")
-    check_python_syntax(texts["scripts/validate.py"])
+    for name, text in texts.items():
+        if name.endswith(".py"):
+            check_python_syntax(text)
     check_links(texts)
 
 
@@ -244,6 +260,25 @@ def secret_scan(worktree, index):
             raise GateError("Pinned Gitleaks intended-source scan failed")
 
 
+def run_corpus(bundle, label):
+    # Test exact intended source copies; fixtures own only guarded temporary graphs.
+    env = os.environ.copy()
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
+    with tempfile.TemporaryDirectory(prefix="project-manifest-candidate-") as tmp:
+        temp = Path(tmp)
+        for name in sorted(CANDIDATE_FILES | {"LICENSE"}):
+            path = temp / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(bundle[name])
+        result = subprocess.run(
+            [sys.executable, "-B", "tests/run_corpus.py", "--scope", "all"],
+            cwd=temp, env=env, capture_output=True, text=True, check=False,
+        )
+        print(f"Corpus observation: {label} intended source snapshot")
+        print(result.stdout + result.stderr, end="")
+        require(result.returncode == 0, "Candidate syntax/shape corpus failed")
+
+
 def main():
     require(os.getenv("MISE_EXEC_AUTO_INSTALL") == "0",
             "Routine gate requires automatic installation disabled")
@@ -260,23 +295,48 @@ def main():
             "Run from the own child checkout")
     names = set(git("ls-files", "--cached", "--others",
                     "--exclude-standard", "-z").decode().split("\0")) - {""}
-    indexed = parse_index(git("ls-files", "--stage", "-z"))
+    index_metadata = git("ls-files", "--stage", "-z")
+    indexed = parse_index(index_metadata)
     check_paths(names | indexed)
-    require(names == FILES, "Bootstrap source layout is not complete/closed")
-    require(not indexed or indexed == FILES, "Initial index is incomplete")
+    require(names == FILES, "Candidate source layout is not complete/closed")
+    require(indexed == FILES or indexed == BASELINE_FILES,
+            "Index is neither full candidate nor exact committed baseline")
+    baseline_index = indexed == BASELINE_FILES
+    if baseline_index:
+        require(not git("diff", "--cached", "--raw", "--no-ext-diff",
+                        "--no-textconv", "HEAD", "--"),
+                "Baseline-only index must be unchanged from HEAD")
     worktree = {name: read_source(name) for name in sorted(names)}
     index = {name: git("show", ":" + name) for name in sorted(indexed)}
     safety_probes()
     check_bundle(worktree)
-    if index:
-        check_bundle(index)
+    check_bundle(index, BASELINE_FILES if baseline_index else FILES)
     secret_scan(worktree, index)
-    print("PASS: bootstrap layout/governance/pins/lock/links/hygiene/privacy")
+    run_corpus(worktree, "worktree candidate")
+    if not baseline_index:
+        run_corpus(index, "full candidate index")
+    require(git("ls-files", "--stage", "-z") == index_metadata,
+            "Index shape changed during validation")
+    observed_names = set(git("ls-files", "--cached", "--others",
+                             "--exclude-standard", "-z").decode().split("\0")) - {""}
+    require(observed_names == names, "Source names changed during validation")
+    require(all(read_source(name) == data for name, data in worktree.items()),
+            "Worktree bytes changed during validation")
+    require(all(git("show", ":" + name) == data for name, data in index.items()),
+            "Index bytes changed during validation")
+    if baseline_index:
+        require(not git("diff", "--cached", "--raw", "--no-ext-diff",
+                        "--no-textconv", "HEAD", "--"),
+                "Baseline index changed during validation")
+    print("PASS: intended layout/governance/pins/lock/links/hygiene/privacy")
     print("PASS: regular index modes; symlink/gitlink/nonregular/unmerged rejection")
     print("PASS: synthetic safety probes and fully redacted Gitleaks source scan")
     print(f"Source: {len(worktree)} worktree files; {len(index)} index files")
     print(f"Tools: Python {PINS['python']}; Gitleaks {PINS['gitleaks']}")
-    print("Intake source only; no corpus/specification/release readiness")
+    print("Index coverage: unchanged committed baseline; no candidate index qualification"
+          if baseline_index else "Index coverage: full candidate source and syntax/shape corpus")
+    print("C4 activation/trusted candidate byte binding; complete v1 validity not checked")
+    print("Broader acquisition, vocabulary/conformance and release approval remain unqualified")
 
 
 if __name__ == "__main__":

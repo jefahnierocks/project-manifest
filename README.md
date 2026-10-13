@@ -1,28 +1,36 @@
 # project-manifest
 
-A fresh source home for a project-manifest specification and its reference
-validation material. The canonical repository is
-`jefahnierocks/project-manifest`. The repository owner is the sole release
-approver.
+An unreleased project-manifest specification candidate and reference source.
+The canonical repository is `jefahnierocks/project-manifest`. The repository
+owner is the sole release approver.
 
-This checkout currently contains an intake baseline and its bootstrap check.
-It has no specification, parser, reference corpus or release. See
-[STATUS.md](STATUS.md) for current state and [AGENTS.md](AGENTS.md) for the
-working contract.
+C1 reads bytes/grammar/closed shape; C2 checks semantic rules and exact
+references over caller-supplied complete tree records. Both are pure stdlib
+APIs with synthetic in-memory tests. C3 adds bounded offline acquisition and
+a source CLI. C4 adds activation semantics and a separately trusted
+[offline byte-binding candidate](docs/offline-binding-candidate.md); complete
+Specification 1 validity remains not checked. Read the [acquisition candidate](docs/acquisition-candidate.md),
+[declaration candidate](docs/validation-candidate.md),
+[specification candidate](docs/specification-candidate.md),
+[field worksheet](docs/field-table.md), [enum worksheet](docs/enum-provenance.md)
+and [STATUS.md](STATUS.md). [AGENTS.md](AGENTS.md) is the working contract.
 
 ## Layout
 
-- `mise.toml` and `mise.lock`: exact bootstrap tools and generated tool lock.
-- `scripts/validate.py`: the local bootstrap validation entrypoint.
-- `AGENTS.md`: canonical agent contract; `CLAUDE.md` imports it.
-- `STATUS.md`: status of record.
-- `LICENSE`: MIT license.
+- `docs/`: candidate grammar, complete field inventory and authority decisions.
+- `src/project_manifest/`: pure APIs, bounded acquisition and source CLI.
+- `bootstrap/`: trusted consumer verifier, acquired separately from payload code.
+- `tests/`: inline synthetic byte/semantic/tree positive, negative and boundary
+  vectors and guarded temporary Git graphs outside harvested roots.
+- `scripts/validate.py`: the sole source gate, including the candidate corpus.
+- `mise.toml` and `mise.lock`: exact provisioned tools and generated lock.
+- `AGENTS.md`: canonical contract; `CLAUDE.md` imports it.
+- `STATUS.md`: status of record; `LICENSE`: MIT license.
 
 ## Setup and check
 
-Use Git and mise 2026.10.8 or later. Run from the repository root. The owner
-must explicitly authorize these host-managed setup actions after reviewing the
-local declaration:
+Use Git and mise 2026.10.8 or later from the repository root. The owner must
+explicitly authorize host-managed setup after reviewing the local declaration:
 
 ```sh
 # Owner-only setup
@@ -30,7 +38,7 @@ mise trust mise.toml
 mise install --locked python@3.13.16 gitleaks@8.30.1
 ```
 
-Routine validation uses the already provisioned tools and disables automatic
+Routine validation uses already provisioned tools and disables automatic
 installation for this process:
 
 ```sh
@@ -38,44 +46,78 @@ MISE_EXEC_AUTO_INSTALL=0 mise exec python@3.13.16 gitleaks@8.30.1 -- python -B s
 ```
 
 If a tool is missing, report it and leave setup to the owner. Retain and report
-inherited host-tool warnings; do not broaden this project's lock or alter host
+inherited host-tool warnings; do not broaden the lock or change host
 configuration to silence them.
 
-The project pins Python 3.13.16 and Gitleaks 8.30.1. Python uses only its standard
-library; there are no application package dependencies. The bootstrap lock
-covers macOS arm64 only. Other platforms and CI portability have not been
-qualified. These bootstrap pins do not define a future validator minimum.
+The exact tools are Python 3.13.16 and Gitleaks 8.30.1. The reader, verifier and reference corpus
+use the standard library; no dependency is added. A separate qualification harness
+compares installed optional YAML loaders without installing them. The generated
+bootstrap lock covers macOS arm64 only. Other platforms, CI portability and
+the future release minimum have not been qualified.
 
-The check verifies the closed bootstrap source layout, governance declarations,
-tool and lock agreement, local Markdown links, text hygiene, private-path
-exclusion and public-safe source heuristics. Pinned Gitleaks scans only the
-intended worktree and index source, with full value redaction. Synthetic
-negative probes check the safety rules without creating Git fixture repositories.
+The gate checks a closed thirty-one-file source set, governance, real tool/lock
+agreement, all Python syntax, local Markdown links, text hygiene, private-path
+exclusion and public-safe source heuristics. Staged entries must be regular
+files at stage zero; symlink, gitlink, other modes and unmerged stages fail.
+Worktree symlink components fail. Pinned Gitleaks scans intended worktree and
+index bytes with full redaction and default rules. Temporary synthetic probes
+exercise safety failures; acquisition uses owned disposable Git graphs.
 
-This proves intake source only. A reference corpus gate is required before
-release 1. No manifest files, discovery, harvesting, projection, producer
-operations or publication are part of the bootstrap.
+The corpus runs from temporary copies of the exact candidate source bytes.
+The index must contain either the complete candidate set or the exact unchanged
+committed ten-file baseline. A baseline-only index is checked for its own
+source safety and is explicitly not qualified as candidate source. A complete
+candidate index gets a separate corpus run. The gate never stages files and
+rejects changes to observed source/index bytes during validation.
+
+## Candidate limits and next work
+
+The pure APIs are `check_candidate(bytes)` for syntax/shape and
+`check_declaration(bytes, tree=TreeSnapshot(...), reference_date="YYYY-MM-DD")`
+for C2 semantics/references. Use `result.diagnostics()` for value-blind
+findings. `result.record` is input-derived data, not diagnostic output.
+The source CLI is `PYTHONPATH=src python -B -m project_manifest` with exactly
+one of `--rev REV`, `--staged` or `--worktree` and an explicitly selected
+`--repo`. Read its [bounds and source selection](docs/acquisition-candidate.md).
+There is no installed command, dependency or repository discovery mode.
+
+C2 checks real calendar/reference dates, canonical/self/peer relationships,
+list uniqueness, candidate runner/task/path policy, and exact regular/executable
+references with no symlink/submodule component. Direct C2 evidence is
+caller-supplied. C3 acquires bounded revision, index or tracked working evidence
+and returns that same TreeSnapshot with accepted Python results. The five manifest enum sets are owner-adopted and checked; development policy
+remains candidate-unapproved. C4 checks none/direnv/mise/project activation owner
+membership, keeps template/launcher independent, and tests a closed externally
+anchored byte-binding candidate before payload import. Fresh installed-loader
+comparisons are bounded evidence, not complete release qualification. Producer
+legacy dispatch, full release binding, native conformance, Linux/runtime and
+producer admission work remain ahead.
+Corpus success is not full conformance or release readiness.
+
+Keep document vectors inline. No discoverable root v1 manifest may appear under
+harvested roots or this origin until lock-only producer admission has landed.
+Synthetic acquisition graphs are an owner-authorized exception solely in guarded
+system temporary roots outside harvested roots. No producer discovery, enrollment, migration, runtime
+operation, release, vendoring or publication is performed here.
 
 ## Tool maintenance and local output
 
-Review pin changes and regenerate the real project lock with:
+After an authorized pin or platform change, regenerate and review the real lock:
 
 ```sh
 mise lock --platform macos-arm64
 ```
 
-Run the bootstrap check after reviewing the lock diff. Never hand-edit generated
-lock metadata. A future platform addition needs its own lock and execution
-evidence. The lock contains public download metadata, not application
-dependencies.
+Never hand-edit generated lock metadata. A platform addition requires its own
+lock and execution evidence. The lock contains public download metadata.
 
-Repository-owned caches and generated output belong in ignored
-`.cache/bootstrap/`, `build/` or `dist/`. The check uses system temporary
-directories that it removes on exit and writes no persistent report or bytecode.
-mise owns its normal host install, cache and trust state; agents do not inspect
-or clean those stores. Local overrides are ignored and must not weaken the
-canonical check.
+Repository-owned caches use ignored `.cache/bootstrap/`; generated output uses
+`build/` and `dist/`. The source gate uses system temporary directories removed
+on exit, with no persistent report or bytecode. Mise owns its normal host
+install, cache and trust state; agents do not inspect or clean those stores.
+Local overrides must not weaken the canonical gate.
 
-Private material is not part of this baseline. If the owner later authorizes
-specific private working material, use ignored `private/` directories; they
-are not durable storage. Secrets and regulated records do not belong here.
+Source and examples are freshly authored and public-safe. Specific private
+working material requires owner authorization and ignored `private/`
+directories, which are not durable storage. Secrets and regulated records do
+not belong here.

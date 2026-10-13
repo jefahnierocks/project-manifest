@@ -30,18 +30,32 @@ Repository-owned caches use `.cache/bootstrap/`; generated outputs use
 `private/` are ignored. Do not inspect or clean tool-managed caches or
 ignored private working material unless the owner names it.
 
-Done means the scoped source is reviewed, the bootstrap gate passes with the
+Done means the scoped source is reviewed, the source gate passes with the
 declared tools and generated lock, current status is accurate, and unrelated
 work is preserved. Run the gate before every commit or pull request. Commits
 use Conventional Commits and the host's existing signing, identity and hooks;
 never disable them to finish work.
 
-The bootstrap gate proves intake source only. Before release 1, add and pass
-the reference corpus gate, including valid and invalid conformance cases.
-Exact tool pins, the committed tool lock and a secret scan must remain part of
-validation before any Governed publication. No release command, parser,
-manifest file or corpus is authorized by this baseline. Manifest enrollment
-must wait for its separately accepted lock-only admission prerequisite.
+The owner-started continuation permits fresh stdlib byte/grammar/shape and
+semantic checks, pure exact-tree validation, bounded offline Git acquisition,
+trusted offline candidate byte verification and fresh synthetic comparison on
+already-installed safe YAML loaders. No loader install or dependency change
+is authorized. The portable pure harness does not qualify Linux acquisition.
+Keep candidate defaults and unapproved vocabulary explicit; success is never
+a complete v1 verdict. The same source gate checks the synthetic corpus.
+Before release 1, complete and pass the full reference corpus, including
+declaration validity and conformance cases. Exact pins, the committed tool
+lock and fully redacted secret scan remain mandatory. Do not add a discoverable
+root v1 manifest under harvested roots or this origin until landed lock-only
+admission. Owner-authorized synthetic Git graphs use only ownership-marked
+/private/tmp/project-manifest-c3-* roots outside harvested roots; raw synthetic
+objects and disposable indexes are permitted, never real history or source
+commits. Clean up only successful owned fixtures; preserve failed fixtures.
+The adapter must refuse unsupported storage, unbounded input, fetching and
+source execution. No producer operation, migration, installed/vendor command,
+release or publication is authorized.
+Do not stage merely to create test coverage: the gate reports candidate
+worktree coverage separately from an unchanged committed baseline index.
 
 ## Owner-only actions
 
