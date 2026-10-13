@@ -198,6 +198,43 @@ class DeclarationTests(unittest.TestCase):
         self.rejected(DATA, "REFERENCE_MODE",
                       tree=modified_tree("tools/check.example", executable=False))
 
+    def test_optional_script_roles_require_their_own_executable_mode(self):
+        good = TreeSnapshot(TREE.entries + (TreeEntry("tools/optional.example", "file", True),))
+        bad = TreeSnapshot(TREE.entries + (TreeEntry("tools/optional.example", "file", False),))
+        for role in OPTIONAL_ROLES:
+            with self.subTest(role=role):
+                data = changed(b"    " + role + b": null\n", b"    " + role + b":\n"
+                    b"      runner: script\n" b'      target: "tools/optional.example"\n', DATA)
+                self.accepted(data, tree=good)
+                result = self.rejected(data, "REFERENCE_MODE", tree=bad)
+                self.assertEqual(result.findings[0].field,
+                                 "development.commands." + role.decode() + ".target")
+
+    def test_mise_target_rules_in_every_role_do_not_check_native_existence(self):
+        for role in (b"check",) + OPTIONAL_ROLES:
+            with self.subTest(role=role):
+                old = (b'    check:\n      runner: script\n      target: "tools/check.example"\n'
+                       if role == b"check" else b"    " + role + b": null\n")
+                def declare(target):
+                    return changed(old, b"    " + role + b":\n      runner: mise\n"
+                                   b'      target: "' + target + b'"\n', DATA)
+                # These names have no supplied mise task declaration. Validity
+                # cannot infer existence/effects or execute native project tools.
+                with contextlib.ExitStack() as stack:
+                    for target in ("builtins.open", "pathlib.Path.read_bytes", "subprocess.run"):
+                        stack.enter_context(patch(target, side_effect=AssertionError("Native task was evaluated")))
+                    result = self.accepted(declare(b"synthetic_missing:task-name"))
+                    self.accepted(declare(b"a" * 64))
+                    too_long = self.rejected(declare(b"a" * 65), "FIELD_BOUND")
+                    self.rejected(declare(b"a/b"), "TARGET_RULE")
+                    unsupported = changed(b"      runner: mise\n", b"      runner: sample-runner\n",
+                                          declare(b"check"))
+                    self.rejected(unsupported, "ENUM_UNSUPPORTED")
+                self.assertEqual(too_long.findings[0].field,
+                                 "development.commands." + role.decode() + ".target")
+                self.assertIn("native_task_and_declaration_conformance",
+                              result.diagnostics()["checks_remaining"])
+
     def test_environment_optional_references_and_launcher_mode(self):
         tree = TreeSnapshot(TREE.entries + (TreeEntry("config", "directory"),
             TreeEntry("config/example.env", "file"), TreeEntry("tools/launcher.example", "file", True)))

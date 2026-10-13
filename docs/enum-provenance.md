@@ -100,10 +100,13 @@ C4 checks the closed activation/non-secret-loading set none/direnv/mise/project.
 Native is not an alias; no per-tool dependency owner is introduced. These
 development values remain candidate policy awaiting release approval.
 
-General tokens allow single hyphens or underscores. The intended new-enum
-kebab-case convention still conflicts with underscore-style development values.
-No aliases or hidden normalization are introduced; freeze must resolve that
-spelling policy before allocating additions.
+General tokens allow single hyphens or underscores. The concrete
+[development-policy freeze proposal](validation-candidate.md#proposed-development-policy-freeze)
+retains implemented literal underscore-bearing values rather than a blanket
+kebab-only rule. No alias or hidden normalization is proposed. An incompatible
+hyphen-only alternative is a separate owner decision with compatibility/release
+review; neither proposal is silently treated as an adopted freeze.
+
 
 The complete release must bind specification, fields, this adopted snapshot,
 reader and corpus under one immutable identity. A shape version alone does not

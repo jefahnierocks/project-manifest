@@ -1,35 +1,43 @@
 # Status
 
-Governed intake baseline 0.1 with an MIT license. Owner-started C1/C2/C3/C4 candidate
-source is under review: grammar/field/provenance worksheets, pure byte and
-semantic/tree validation, bounded offline Git acquisition, a source CLI, activation-owner membership
-and an externally anchored candidate byte-binding verifier for trusted consumers.
+Governed intake baseline 0.1 with an MIT license. The unreleased specification
+candidate and reference source are under review; the repository owner is the
+sole release approver.
 
-The source gate distinguishes the thirty-one-file candidate worktree from the
-unchanged committed ten-file baseline index. Execution evidence belongs to the
-actual gate run; earlier passes do not qualify amended bytes.
+Source provides a pure byte/closed-shape reader, declaration semantics and exact
+tree-reference checks, bounded offline Git acquisition with a source CLI, and a
+separately trusted consumer bootstrap for candidate byte binding. These scopes
+remain distinct; none grants execution or complete Specification 1 validity.
 
-C3 selects one revision, ordinary stage-zero index or tracked working observation
-without source execution or fetching. It returns the exact observed TreeSnapshot
-beside accepted Python records and value-blind CLI diagnostics. Its current
-qualification is bounded local macOS/POSIX storage; unsupported layouts, resource
-limits or changed evidence return not checked. See the
-[acquisition candidate](docs/acquisition-candidate.md).
+The source gate validates its closed source set and reports actual worktree and
+index coverage in each receipt. It supports the exact unchanged initial baseline
+or the full candidate index; complete candidate index coverage is independently
+tested when present. Counts, earlier runs and a prior baseline-only index are
+not substitutes for qualification of current bytes. Staging source does not
+invalidate this status description.
 
-The five generic manifest domains are owner-adopted. Six determinate OS/architecture
-platform tokens have candidate membership checks; empty means no platform claim.
-Activation uses candidate none/direnv/mise/project values; native is no alias.
-Development-policy approval, activation/native conformance, full cross-loader
-and Linux qualification, complete release binding, producer admission and runtime
-acceptance remain separate. Complete Specification 1 validity is not checked.
+The five generic manifest domains, uniform canonical relation and full
+development shape are settled. Remaining development semantics and literal
+spelling have a [concrete freeze proposal](docs/validation-candidate.md#proposed-development-policy-freeze),
+which remains candidate-unapproved until the owner freezes it. Empty platforms
+declares no platform claim; platform tokens are not host observation or
+portability proof. [Declaration corpus coverage](docs/validation-candidate.md#declaration-corpus-coverage)
+records inspected byte/semantic/tree fixtures and their acceptance boundaries.
 
-C4's stdlib trusted bootstrap inspects a closed twenty-file payload against an
-external digest before any payload import. Its synthetic tamper corpus and
-installed-loader comparison are source candidates, not an approved release.
+Acquisition currently qualifies only its bounded local macOS/POSIX envelope;
+unsupported storage or changed/unavailable evidence returns not checked.
+Candidate byte binding requires an external trusted digest before payload import
+and immutable use of verified bytes; it is not an approved release or consumer
+lock. Actual native task/role/secretless-check/activation/Compose safety belongs
+to project/consumer acceptance; validation executes no project code.
+
+Complete release/artifact and runtime/platform/loader qualification, the private
+diagnostic, producer identity/join/legacy dispatch and lock-only admission,
+consumer pilot and runtime acceptance remain separate requirements. Complete
+Specification 1 validity remains not checked.
 
 There is no released specification, approved full validator, installed/vendor
-command, pilot acceptance, publication or manifest migration. No root manifest
-is initialized here. Synthetic Git fixtures are restricted to guarded system
-temporary roots outside harvested roots; source graphs are never real history.
-
-The repository owner is the sole release approver.
+command, accepted pilot or manifest migration. No root manifest is initialized.
+Document vectors remain inline; synthetic Git fixtures use guarded owned
+temporary roots outside harvested roots.
+Public visibility, main landing and release approval remain owner decisions.

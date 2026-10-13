@@ -4,12 +4,12 @@ An unreleased project-manifest specification candidate and reference source.
 The canonical repository is `jefahnierocks/project-manifest`. The repository
 owner is the sole release approver.
 
-C1 reads bytes/grammar/closed shape; C2 checks semantic rules and exact
-references over caller-supplied complete tree records. Both are pure stdlib
-APIs with synthetic in-memory tests. C3 adds bounded offline acquisition and
-a source CLI. C4 adds activation semantics and a separately trusted
-[offline byte-binding candidate](docs/offline-binding-candidate.md); complete
-Specification 1 validity remains not checked. Read the [acquisition candidate](docs/acquisition-candidate.md),
+The byte/closed-shape reader and declaration semantics/tree-reference checker
+are pure stdlib APIs with synthetic in-memory tests. Bounded offline Git
+acquisition returns one explicit source observation through an API and source
+CLI. A separately trusted consumer bootstrap provides
+[candidate offline byte binding](docs/offline-binding-candidate.md) before
+payload import. Complete Specification 1 validity remains not checked. Read the [acquisition candidate](docs/acquisition-candidate.md),
 [declaration candidate](docs/validation-candidate.md),
 [specification candidate](docs/specification-candidate.md),
 [field worksheet](docs/field-table.md), [enum worksheet](docs/enum-provenance.md)
@@ -81,14 +81,16 @@ one of `--rev REV`, `--staged` or `--worktree` and an explicitly selected
 `--repo`. Read its [bounds and source selection](docs/acquisition-candidate.md).
 There is no installed command, dependency or repository discovery mode.
 
-C2 checks real calendar/reference dates, canonical/self/peer relationships,
-list uniqueness, candidate runner/task/path policy, and exact regular/executable
-references with no symlink/submodule component. Direct C2 evidence is
-caller-supplied. C3 acquires bounded revision, index or tracked working evidence
-and returns that same TreeSnapshot with accepted Python results. The five manifest enum sets are owner-adopted and checked; development policy
-remains candidate-unapproved. C4 checks none/direnv/mise/project activation owner
-membership, keeps template/launcher independent, and tests a closed externally
-anchored byte-binding candidate before payload import. Fresh installed-loader
+The declaration API checks real calendar/reference dates, canonical/self/peer
+relationships, list uniqueness, candidate runner/task/path policy, and exact
+regular/executable references with no symlink/submodule component. Its direct
+tree evidence is caller-supplied. The separate acquirer obtains bounded
+revision, index or tracked working evidence and returns that same TreeSnapshot
+with accepted Python results. The five manifest enum sets are owner-adopted
+and checked; the [development-policy freeze proposal](docs/validation-candidate.md#proposed-development-policy-freeze)
+remains candidate-unapproved. Activation owner uses none/direnv/mise/project
+independently from template/launcher presence. The separately trusted bootstrap
+checks a closed externally anchored byte-binding candidate before payload import. Fresh installed-loader
 comparisons are bounded evidence, not complete release qualification. Producer
 legacy dispatch, full release binding, native conformance, Linux/runtime and
 producer admission work remain ahead.

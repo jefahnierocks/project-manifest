@@ -143,7 +143,8 @@ for canonical role, and the full development shape. Those selected decisions
 are not reopened by the reader's incomplete semantic checks. Before freeze:
 
 - Bind the owner-adopted five-domain snapshot into the complete release;
-  approve remaining development vocabulary and spelling.
+  approve the [concrete development-policy proposal](validation-candidate.md#proposed-development-policy-freeze),
+  retaining exact implemented literals unless the owner selects a distinct alternative.
 - Integrate the source-confirmed legacy rejection with the producer dispatch contract.
 - Review C2's implemented calendar/reference-date, canonical/self/peer rules
   and candidate list-uniqueness policy for freeze.

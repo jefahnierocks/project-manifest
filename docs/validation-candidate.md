@@ -53,11 +53,12 @@ uniqueness remain producer responsibilities.
 
 Peer, platform and requirement lists reject duplicates as an explicit C2
 candidate default. Order is preserved. Empty platforms means no platform
-claim; acceptance never supplies a portability receipt. C3 adds candidate
-membership in macos-arm64, macos-x86_64, linux-arm64, linux-x86_64,
+claim; acceptance never supplies a portability receipt. The declaration API
+checks candidate membership in macos-arm64, macos-x86_64, linux-arm64, linux-x86_64,
 windows-arm64 and windows-x86_64. Unknown-axis tokens are excluded by
 candidate policy; the generic axes themselves provide no pair restriction.
-Activation-owner membership remains pending.
+Activation-owner membership is implemented for none/direnv/mise/project;
+release-policy approval and actual activation behavior remain separate.
 
 The producer runtime floor is Python 3.11+, so the declaration API uses that
 candidate floor and returns not checked below it when import is possible.
@@ -114,10 +115,32 @@ check and format:check describe task syntax, not approved project tasks.
 Quoted task names need not exclude YAML reserved words. Task existence and role
 effects require separate native-file conformance; mise is never evaluated.
 
-Candidate policy defaults, duplicate rejection, platform-empty meaning, task
-spelling and portable executable paths need freeze review. The kebab/underscore
-enum-style conflict remains unresolved; no aliases or normalization are added.
-No proposed vocabulary is silently promoted to release authority.
+## Proposed development-policy freeze
+
+This is one concrete freeze recommendation, not owner approval. Retain the exact
+implemented literal sets and bounds rather than introducing incompatible aliases:
+
+| Decision | Proposed frozen rule |
+| --- | --- |
+| Platform tokens | macos-arm64, macos-x86_64, linux-arm64, linux-x86_64, windows-arm64, windows-x86_64; empty means no platform claim |
+| Runner tokens | script or mise; every non-null command role uses the same runner-specific rules |
+| Activation owner tokens | none, direnv, mise or project, with the independent template/launcher semantics above |
+| Stack keys and tokens | compose, instance_scope and literal port_policy; scope host/checkout; policy unpublished/loopback_only |
+| Requirement tokens and implication | container_engine/android_sdk; any nonempty stacks require container_engine |
+| List policy | Peer, platform and requirement duplicates are invalid; retain declared order; no deduplication or inferred values |
+| Script/launcher targets | Literal relative portable paths, maximum 255 bytes, exact regular executable tree reference, no .git component in any letter case or argv |
+| Mise targets | Quoted task names, maximum 64 bytes, lowercase token segments separated by single colons; no path/argv interpretation or task evaluation |
+| Token spelling | Retain current literal underscore-bearing values, including container_engine, android_sdk and loopback_only; no blanket kebab-only restriction |
+
+General bare tokens continue to allow single hyphen or underscore separators.
+Closed sets require exact literal membership; no aliases, case folding or hidden
+normalization are proposed. An alternative replacing existing underscores with
+hyphens is a distinct owner decision requiring compatibility and release review,
+not a style-only edit. The five generic manifest domains, uniform canonical
+relation and full development shape are settled and are not reopened here.
+These development defaults remain candidate-unapproved until the owner freezes
+them. Native task/effect/activation and Compose safety acceptance are not implied.
+
 
 ## Exact-tree references
 
@@ -138,6 +161,38 @@ network, process or runtime operation. Its caller records remain unverified.
 The separate [C3 adapter](acquisition-candidate.md) acquires bounded evidence
 and exposes the exact TreeSnapshot used by C2 beside accepted Python records.
 A staged or working observation is never mislabeled as a committed verdict.
+
+## Declaration corpus coverage
+
+The following map records inspected fixture bodies, not just test-method names.
+Positions refer to the public [field inventory](field-table.md). Test names below
+are in tests/test_candidate.py (CandidateTests) or tests/test_validation.py
+(DeclarationTests). Inline vectors contain fresh synthetic values; no project
+command, native tool, referenced content, clock or producer is evaluated.
+
+| Candidate rule group | Positive / negative / boundary fixtures |
+| --- | --- |
+| Byte/line profile | test_bytes checks LF/ASCII, controls/BOM/Unicode/missing LF/trailing spaces; test_file_and_line_boundaries accepts 65,536 file bytes/2,048 line bytes and rejects the next byte |
+| First content and legacy dispatch boundary | test_version_line covers exact quoted1, missing/duplicate/wrong spellings and the three legacy forms; test_legacy_forms_remain_invalid_and_dispatchable retains legacy rejection without producer dispatch |
+| Grammar and closed mappings | test_comments_blanks_and_unordered_keys; test_prohibited_forms; test_spacing_indentation_and_depth; duplicate/unknown-key fixtures reach every mapping class, including dynamic stack records |
+| Byte-reader fixed keys and nullability | test_every_fixed_field_is_required_even_when_nullable removes all 51 fixed positions beyond the version guard; sole-child removal uses an explicit empty map; test_nullability_of_every_fixed_record_and_leaf accepts only the ten nullable positions and rejects null elsewhere, including a present stack record |
+| Scalar/token/path bounds | test_token_boundaries_and_reserved_spellings covers 1/64/65-byte IDs and dynamic names; test_text_boundaries covers 1/max/max+1 and empty strings; test_path_boundaries_and_lexical_rules applies 1/255/256 and unsafe spellings to every reference class |
+| Gregorian date and explicit reference day | test_calendar_dates_and_future_boundary covers real leap/calendar limits, future refusal and old dates; test_reference_date_evidence_not_checked rejects missing, malformed, impossible and datetime evidence |
+| Adopted domains and identity relations | test_all_five_owner_adopted_enum_sets_and_unknown_rejection tests every adopted value; test_selected_uniform_canonical_and_own_id_rules covers null/role/own-ID and peer relations; no cross-project lookup |
+| Lists and platform claims | test_list_uniqueness_and_empty_platform_claim checks all three duplicate classes; test_candidate_platform_domain_is_closed_and_empty_remains_no_claim tests all six tokens and unknown-axis refusal |
+| Runner-specific semantics in every role | test_closed_candidate_runner_vocabulary and test_task_spelling_and_bounds; test_mise_target_rules_in_every_role_do_not_check_native_existence reaches all seven roles at 64/65 bytes and invalid task paths while denying native I/O |
+| Executable script references | test_each_command_role_requires_executable_script supplies/misses every optional role; test_optional_script_roles_require_their_own_executable_mode checks each optional role independently from the valid check role; test_script_target_literal_path_and_bounds covers 255/256 and argv refusal |
+| Environment independence and references | test_activation_owner_domain_and_rejected_alias checks all four owners and unsupported alternatives; test_activation_template_and_secret_launcher_are_independent covers all 16 combinations; test_environment_optional_references_and_launcher_mode checks absent/file/mode/unsafe-path evidence |
+| Stack policy and requirements | test_stack_requirement_scope_policy_and_compose tests both scopes/policies, unsupported values, Compose file presence and engine implication; byte fixtures reject unknown/missing fixed stack keys and retain empty-map shape |
+| Exact complete-tree evidence | test_exact_case_lookup_and_directory_nodes covers literal case, order, unrelated Unicode and final directories; symlink/submodule and unavailable/malformed tree fixtures reject unsafe, incomplete, duplicate and inconsistent records; known-empty tree gives missing-reference rejection |
+| Safe pure result/evidence boundary | diagnostic fixtures exclude records/values/dynamic keys from failure output; test_syntax_then_semantics_then_evidence_order fixes phase ordering; test_no_filesystem_process_network_or_clock_operations denies native I/O; runtime guard simulation is not a live runtime receipt |
+
+This is finite candidate declaration coverage, not an exhaustive program-state
+proof or complete-release receipt. Acquisition storage/host cases and bootstrap
+byte-binding tamper cases belong to their separate existing corpora. Passing
+them cannot prove native task existence, role effects, secretless check behavior,
+activation correctness, actual Compose port/concurrency safety or host capability.
+Those claims need project/consumer acceptance; validation executes no project code.
 
 ## Results and remaining gates
 
@@ -161,9 +216,17 @@ FIELD_RELATION, ENUM_UNSUPPORTED, TARGET_RULE, REFERENCE_MISSING and
 REFERENCE_MODE; FIELD_BOUND, REFERENCE_PATH and NOT_CHECKED retain their
 candidate meanings. These are not published compatibility identifiers.
 
-Remaining work is concrete: complete-release provenance/binding; development
-vocabulary approval; producer legacy dispatch;
-fresh minimum-runtime and cross-loader evidence; broader acquisition qualification;
-immutable release binding/offline vendoring; native task/role/declaration
-conformance; producer admission/identity invariance and runtime acceptance.
-No release/publication/adoption or discoverable v1 root manifest follows from C2.
+Remaining declaration authority is the explicit development-policy freeze;
+any subsequently selected missing validity rule requires its own source/corpus
+delta. Native task existence, role effects, secretless check, activation behavior
+and Compose runtime safety belong to project/consumer acceptance, not execution
+inside the validator. Producer legacy dispatch and cross-project identity/join
+invariance remain producer-owned.
+
+Complete-release provenance, approved artifact/consumer lock and bootstrap trust,
+full runtime/platform/loader qualification, the private diagnostic, producer
+admission and pilot/runtime acceptance remain separate. Existing source receipts
+qualify only their exact bytes and execution envelopes. Bounded acquisition and
+candidate byte binding are implemented source mechanisms, not complete release
+or offline-vendor acceptance. No release/publication/adoption or discoverable v1
+root manifest follows from declaration acceptance.

@@ -64,6 +64,65 @@ def changed(old, new, data=BASE):
     return data.replace(old, new)
 
 
+def full_declaration_shape():
+    data = EXPANDED
+    for role in OPTIONAL_ROLES:
+        data = changed(b"    " + role + b": null\n", b"    " + role + b":\n"
+                       b"      runner: sample-runner\n" b'      target: "sample-task"\n', data)
+    for old, new in (
+        (b"canonical: null\n", b"canonical: sample-parent\n"),
+        (b"  public_alias: null\n", b'  public_alias: "Synthetic alias"\n'),
+        (b"    template: null\n", b'    template: "config/example.env"\n'),
+        (b"    secret_launcher: null\n", b'    secret_launcher: "scripts/example-launcher"\n'),
+    ):
+        data = changed(old, new, data)
+    return data
+
+
+# Independent public contract positions, not imported from the reader's SHAPE.
+REQUIRED_POSITIONS = (
+    "project", "role", "canonical", "peers", "status", "authority",
+    "presentation", "development",
+) + tuple(parent + "." + key for parent, keys in (
+    ("project", ("id", "display_name", "owner_entity")),
+    ("status", ("posture", "operational_state", "local_phase", "as_of")),
+    ("authority", ("status_of_record",)),
+    ("presentation", ("visibility", "public_alias", "link_policy")),
+    ("development", ("platforms", "commands", "environment", "stacks", "host_requirements")),
+    ("development.environment", ("owner", "template", "secret_launcher")),
+    ("development.stacks.sample-stack", ("compose", "instance_scope", "port_policy")),
+) for key in keys) + tuple(
+    "development.commands." + role.decode() + suffix
+    for role in (b"check",) + OPTIONAL_ROLES for suffix in ("", ".runner", ".target")
+)
+NULLABLE_POSITIONS = frozenset((
+    "canonical", "presentation.public_alias", "development.environment.template",
+    "development.environment.secret_launcher",
+)) | frozenset("development.commands." + role.decode() for role in OPTIONAL_ROLES)
+
+
+def edit_fixture_field(data, field, *, omit=False):
+    # Locate only this trusted fixture's line block; no validator/parser internals.
+    lines, stack = data.splitlines(keepends=True), []
+    for start, line in enumerate(lines):
+        depth = (len(line) - len(line.lstrip(b" "))) // 2
+        key = line.lstrip(b" ").split(b":", 1)[0].decode("ascii")
+        stack = stack[:depth] + [key]
+        if ".".join(stack) != field:
+            continue
+        end = start + 1
+        while end < len(lines) and len(lines[end]) - len(lines[end].lstrip(b" ")) > depth * 2:
+            end += 1
+        replacement = b"" if omit else b" " * (depth * 2) + key.encode() + b": null\n"
+        changed_data = b"".join(lines[:start]) + replacement + b"".join(lines[end:])
+        # Keep a sole-child omission syntactically valid so shape requiredness,
+        # rather than an orphan empty-header grammar error, determines rejection.
+        if omit and field == "authority.status_of_record":
+            changed_data = changed(b"authority:\n", b"authority: {}\n", changed_data)
+        return changed_data
+    raise AssertionError("Public fixture field was not found")
+
+
 class CandidateTests(unittest.TestCase):
     def accepted(self, data):
         result = check_candidate(data)
@@ -99,6 +158,28 @@ class CandidateTests(unittest.TestCase):
             "runner": "sample-runner", "target": "check-example",
         })
         self.assertEqual(check_candidate(BASE), check_candidate(BASE))
+
+    def test_every_fixed_field_is_required_even_when_nullable(self):
+        data = full_declaration_shape()
+        self.accepted(data)
+        self.assertEqual(len(REQUIRED_POSITIONS), 51)
+        self.assertEqual(len(set(REQUIRED_POSITIONS)), 51)
+        for field in REQUIRED_POSITIONS:
+            with self.subTest(field=field):
+                self.rejected(edit_fixture_field(data, field, omit=True), "KEY_REQUIRED")
+        # Version removal belongs to first-content selection, not map requiredness.
+        self.rejected(changed(b'spec_version: "1"\n', b"", data), "VERSION_LINE")
+
+    def test_nullability_of_every_fixed_record_and_leaf(self):
+        data = full_declaration_shape()
+        for field in REQUIRED_POSITIONS:
+            with self.subTest(field=field):
+                candidate = edit_fixture_field(data, field)
+                if field in NULLABLE_POSITIONS:
+                    self.accepted(candidate)
+                else:
+                    self.rejected(candidate, "FIELD_TYPE")
+        self.rejected(edit_fixture_field(data, "development.stacks.sample-stack"), "FIELD_TYPE")
 
     def test_full_development_shape(self):
         data = EXPANDED

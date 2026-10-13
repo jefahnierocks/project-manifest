@@ -46,9 +46,9 @@ acquires bounded same-observation records; it grants no execution authority.
 | development.commands.format_check | Closed runner/target record or null | Formatting verification; effect contract pending. |
 | development.commands.format_write | Closed runner/target record or null | Formatting mutation; invocation still requires project authority. |
 | development.commands.ROLE.runner | Token, 1-64 bytes | C2 supports candidate script/mise semantics; approved pilot vocabulary remains pending. |
-| development.commands.ROLE.target | C1 quoted text, 1-255 bytes; C2 script path 255 or mise task 64 | Script means tracked executable path; other runners mean native task, maximum 64 bytes. C2 checks candidate bounds/spelling/argv exclusion and script executable tree mode; native task existence and effects remain conformance. |
+| development.commands.ROLE.target | C1 quoted text, 1-255 bytes; C2 script path 255 or mise task 64 | Script means tracked executable path; mise means native task, maximum 64 bytes; every other runner is unsupported. C2 checks candidate bounds/spelling/argv exclusion and script executable tree mode; native task existence and effects remain conformance. |
 | development.environment | Exactly owner, template, secret_launcher | Owner is activation and non-secret configuration loading, not every tool/dependency environment. |
-| development.environment.owner | Token, 1-64 bytes | C4 checks none/direnv/mise/project for activation and non-secret loading; native is not an alias. Runtime/dependency ownership remains independent; behavioral conformance and release-policy approval remain separate. |
+| development.environment.owner | Token, 1-64 bytes | The declaration API checks none/direnv/mise/project for activation and non-secret loading; native is not an alias. Runtime/dependency ownership remains independent; behavioral conformance and release-policy approval remain separate. |
 | development.environment.template | Quoted lexical relative path, 1-255 bytes, or null | Null means absent; C2 checks supplied regular-file records; C3 supports bounded acquisition. |
 | development.environment.secret_launcher | Quoted lexical relative path, 1-255 bytes, or null | Null means no role consumes secrets. C2 requires a portable regular executable reference. Role/secret-use conformance remains pending; C3 supports bounded acquisition and never delivers a value. |
 | development.stacks | Dynamic token-keyed closed records; empty map allowed | Nonempty stacks require container-engine declaration; C2 checks the container_engine implication; vocabulary still needs approval. |
@@ -70,13 +70,17 @@ C1 applies lexical path rules. C2 checks complete caller-supplied tree records
 and candidate task/portable-script syntax. Neither authenticates tree acquisition
 or grants execution through acceptance.
 
-## Decisions needed before complete validity
+## Remaining declaration authority and separate acceptance
 
-Approve C2 defaults for list uniqueness, empty platform meaning, runner/task
-spelling, portable executable paths, launcher mode, stack policy key/vocabulary
-and requirement implications. Activation/role effects need native conformance.
-Bind the owner-adopted snapshot and qualify release/runtime envelopes. Selected
-canonical/peer relations, calendar replay and pure tree checks are implemented;
-Broader acquisition qualification and approval evidence remain missing. Establish private grammar
-and identity compatibility through the authorized diagnostic without copying
-private source into this repository.
+The [concrete development-policy freeze proposal](validation-candidate.md#proposed-development-policy-freeze)
+retains current literal values and reference/task/list/stack/activation semantics;
+owner approval remains required. The selected uniform canonical and full
+development shape, adopted five-domain snapshot, calendar replay and pure tree
+checks are not reopened. The [corpus map](validation-candidate.md#declaration-corpus-coverage)
+distinguishes inspected positive, negative and limit fixtures.
+
+Native task existence, role effects, secretless check, activation behavior and
+Compose safety require project/consumer acceptance without execution by this
+validator. Complete release/artifact/runtime/platform qualification, private
+grammar and producer identity/admission evidence are separate owner lanes;
+private source is never copied into this origin.
