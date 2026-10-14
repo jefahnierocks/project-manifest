@@ -91,10 +91,11 @@ The stdlib harness `python -B tests/run_corpus.py --scope pure` exercises byte a
 semantic controls without synthetic Git graphs. CLI tests belong to the full
 acquisition lane because some create synthetic Git graphs. `--scope all` also runs
 guarded acquisition and, in the trusted origin source, bootstrap tamper tests.
-Those fixtures retain the existing approved macOS temporary-root contract.
-Other full-acquisition hosts return exit 2 before fixtures are created; Linux
-qualification remains open. Pure test portability is not full acquisition
-portability. These are source test interfaces, not an installed command.
+Those fixtures use fixed owned macOS-arm64 or Linux-x86_64 temporary roots.
+Other full-acquisition hosts return exit 2 before fixture creation. The prepared
+Linux hosted job must supply an actual exact-source execution receipt; Linux
+qualification remains open until then. Pure test portability and source-only
+host support are not full acquisition qualification. These are source test interfaces, not an installed command.
 
 `python -B tests/compare_loaders.py` compares fresh inline synthetic vectors
 with already-installed PyYAML SafeLoader/CSafeLoader and Ruby Psych safe loading.

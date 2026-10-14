@@ -9,12 +9,11 @@ tree-reference checks, bounded offline Git acquisition with a source CLI, and a
 separately trusted consumer bootstrap for candidate byte binding. These scopes
 remain distinct; none grants execution or complete Specification 1 validity.
 
-The source gate validates its closed source set and reports actual worktree and
-index coverage in each receipt. It supports the exact unchanged initial baseline
-or the full candidate index; complete candidate index coverage is independently
-tested when present. Counts, earlier runs and a prior baseline-only index are
-not substitutes for qualification of current bytes. Staging source does not
-invalidate this status description.
+The source gate validates its closed source set and requires the complete
+candidate index. It checks worktree and index bytes and runs the corpus
+separately for both snapshots. Counts and earlier runs are not substitutes
+for qualification of current bytes. Staging source does not invalidate this
+status description.
 
 The five generic manifest domains, uniform canonical relation and full
 development shape are settled. The owner froze the reviewed development
@@ -24,6 +23,9 @@ declares no platform claim; platform tokens are not host observation or
 portability proof. [Declaration corpus coverage](docs/validation-candidate.md#declaration-corpus-coverage)
 records inspected byte/semantic/tree fixtures and their acceptance boundaries.
 
+The Linux-x86_64 hosted synthetic qualification mechanism is prepared in source;
+it is not an executed Linux qualification receipt. Current source rules and
+the macOS evidence remain distinct from selected-host future execution.
 Acquisition currently qualifies only its bounded local macOS/POSIX envelope;
 unsupported storage or changed/unavailable evidence returns not checked.
 Candidate byte binding requires an external trusted digest before payload import

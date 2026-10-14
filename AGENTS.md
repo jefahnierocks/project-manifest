@@ -22,7 +22,7 @@ the sole release approver. This contract has no baseline exceptions.
 MISE_EXEC_AUTO_INSTALL=0 mise exec python@3.13.16 gitleaks@8.30.1 -- python -B scripts/validate.py
 ```
 
-- `mise lock --platform macos-arm64`: regenerate this project's tool lock after
+- `mise lock --platform macos-arm64,linux-x64`: regenerate this project's tool lock after
   an authorized pin or platform change; review the diff.
 
 Repository-owned caches use `.cache/bootstrap/`; generated outputs use
@@ -40,7 +40,12 @@ The owner-started continuation permits fresh stdlib byte/grammar/shape and
 semantic checks, pure exact-tree validation, bounded offline Git acquisition,
 trusted offline candidate byte verification and fresh synthetic comparison on
 already-installed safe YAML loaders. No loader install or dependency change
-is authorized. The portable pure harness does not qualify Linux acquisition.
+is authorized. The Linux-x86_64 hosted source job is a qualification candidate; preparing it
+does not qualify Linux acquisition. It uses only ownership-marked temporary
+graphs and explicit pinned tool preparation in the hosted runner's temporary
+prefix. Current Python/Gitleaks URLs and checksums come from the generated
+Linux lock; floor Python/Git are separate qualification pins. No maintained
+image, global install, provider/private input or privileged PR event is used.
 Keep candidate defaults and unapproved vocabulary explicit; success is never
 a complete v1 verdict. The same source gate checks the synthetic corpus.
 Before release 1, complete and pass the full reference corpus, including
@@ -48,14 +53,16 @@ declaration validity and conformance cases. Exact pins, the committed tool
 lock and fully redacted secret scan remain mandatory. Do not add a discoverable
 root v1 manifest under harvested roots or this origin until landed lock-only
 admission. Owner-authorized synthetic Git graphs use only ownership-marked
-/private/tmp/project-manifest-c3-* roots outside harvested roots; raw synthetic
+/private/tmp/project-manifest-c3-* (macOS arm64) or /tmp/project-manifest-c3-*
+(Linux x86_64) roots outside harvested roots; raw synthetic
 objects and disposable indexes are permitted, never real history or source
 commits. Clean up only successful owned fixtures; preserve failed fixtures.
 The adapter must refuse unsupported storage, unbounded input, fetching and
 source execution. No producer operation, migration, installed/vendor command,
 release or publication is authorized.
-Do not stage merely to create test coverage: the gate reports candidate
-worktree coverage separately from an unchanged committed baseline index.
+Do not stage merely to create test coverage. The full gate requires the complete
+candidate index and checks worktree and index snapshots separately. Unstaged
+review may use focused source checks; it is not full-gate qualification.
 
 ## Owner-only actions
 

@@ -30,7 +30,8 @@ CANDIDATE_FILES = {
     "tests/test_acquisition.py", "tests/test_cli.py",
     "bootstrap/release_verifier.py", "tests/test_binding.py",
     "docs/offline-binding-candidate.md", "tests/run_corpus.py",
-    "tests/compare_loaders.py",
+    "tests/compare_loaders.py", "scripts/prepare-linux-tools.py",
+    "tests/test_tool_preparation.py", ".github/workflows/linux-source.yml",
 }
 FILES = BASELINE_FILES | CANDIDATE_FILES
 PRIVATE_DATA = re.compile(
@@ -135,8 +136,8 @@ def check_python_syntax(text):
         raise GateError("Invalid Python source syntax") from None
 
 
-def check_bundle(bundle, expected_files=FILES):
-    require(set(bundle) == expected_files, "Intended source layout is not complete/closed")
+def check_bundle(bundle):
+    require(set(bundle) == FILES, "Intended source layout is not complete/closed")
     texts = {name: check_text(name, data) for name, data in bundle.items()}
     agents = texts["AGENTS.md"]
     for declaration in (
@@ -167,7 +168,7 @@ def check_bundle(bundle, expected_files=FILES):
             and set(config) == {"min_version", "tools", "settings"},
             "Project declaration does not match bootstrap pins")
     require(config["settings"] == {
-        "lockfile": True, "lockfile_platforms": ["macos-arm64"],
+        "lockfile": True, "lockfile_platforms": ["macos-arm64", "linux-x64"],
     }, "Project lock settings mismatch")
     lock = tomllib.loads(texts["mise.lock"])
     require(lock.get("lockfile_version") == 3
@@ -182,15 +183,16 @@ def check_bundle(bundle, expected_files=FILES):
                 and entry.get("backend") == BACKENDS[tool],
                 "Pin/request/backend differs from generated lock")
         require({k for k in entry if k.startswith("platforms.")}
-                == {"platforms.macos-arm64"}, "Unexpected locked platforms")
-        artifact = entry["platforms.macos-arm64"]
-        require(re.fullmatch(r"sha256:[0-9a-f]{64}", artifact.get("checksum", "")),
-                "Locked SHA-256 missing")
-        url = urlsplit(artifact.get("url", ""))
-        require(url.scheme == "https" and url.hostname == "github.com"
-                and not url.username and not url.password and not url.query
-                and not url.fragment and version in url.path,
-                "Locked artifact URL is not the expected public release")
+                == {"platforms.macos-arm64", "platforms.linux-x64"}, "Unexpected locked platforms")
+        for platform_name in ("macos-arm64", "linux-x64"):
+            artifact = entry["platforms." + platform_name]
+            require(re.fullmatch(r"sha256:[0-9a-f]{64}", artifact.get("checksum", "")),
+                    "Locked SHA-256 missing")
+            url = urlsplit(artifact.get("url", ""))
+            require(url.scheme == "https" and url.hostname == "github.com"
+                    and not url.username and not url.password and not url.query
+                    and not url.fragment and version in url.path,
+                    "Locked artifact URL is not the expected public release")
     for name, text in texts.items():
         if name.endswith(".py"):
             check_python_syntax(text)
@@ -266,7 +268,7 @@ def run_corpus(bundle, label):
     env["PYTHONDONTWRITEBYTECODE"] = "1"
     with tempfile.TemporaryDirectory(prefix="project-manifest-candidate-") as tmp:
         temp = Path(tmp)
-        for name in sorted(CANDIDATE_FILES | {"LICENSE"}):
+        for name in sorted(CANDIDATE_FILES | {"LICENSE", "mise.toml", "mise.lock"}):
             path = temp / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(bundle[name])
@@ -284,8 +286,8 @@ def main():
             "Routine gate requires automatic installation disabled")
     require(platform.python_version() == PINS["python"]
             and sys.version_info.releaselevel == "final", "Python pin mismatch")
-    require(platform.system() == "Darwin" and platform.machine() == "arm64",
-            "Bootstrap execution is qualified only for macOS arm64")
+    require((platform.system(), platform.machine()) in {("Darwin", "arm64"), ("Linux", "x86_64")},
+            "Source gate permits only selected macOS-arm64/Linux-x86_64 hosts")
     version = subprocess.run(["gitleaks", "--version"], capture_output=True,
                              text=True, check=False)
     match = re.search(r"\b\d+\.\d+\.\d+\b", version.stdout)
@@ -299,22 +301,15 @@ def main():
     indexed = parse_index(index_metadata)
     check_paths(names | indexed)
     require(names == FILES, "Candidate source layout is not complete/closed")
-    require(indexed == FILES or indexed == BASELINE_FILES,
-            "Index is neither full candidate nor exact committed baseline")
-    baseline_index = indexed == BASELINE_FILES
-    if baseline_index:
-        require(not git("diff", "--cached", "--raw", "--no-ext-diff",
-                        "--no-textconv", "HEAD", "--"),
-                "Baseline-only index must be unchanged from HEAD")
+    require(indexed == FILES, "Index must contain the complete candidate source set")
     worktree = {name: read_source(name) for name in sorted(names)}
     index = {name: git("show", ":" + name) for name in sorted(indexed)}
     safety_probes()
     check_bundle(worktree)
-    check_bundle(index, BASELINE_FILES if baseline_index else FILES)
+    check_bundle(index)
     secret_scan(worktree, index)
     run_corpus(worktree, "worktree candidate")
-    if not baseline_index:
-        run_corpus(index, "full candidate index")
+    run_corpus(index, "full candidate index")
     require(git("ls-files", "--stage", "-z") == index_metadata,
             "Index shape changed during validation")
     observed_names = set(git("ls-files", "--cached", "--others",
@@ -324,17 +319,12 @@ def main():
             "Worktree bytes changed during validation")
     require(all(git("show", ":" + name) == data for name, data in index.items()),
             "Index bytes changed during validation")
-    if baseline_index:
-        require(not git("diff", "--cached", "--raw", "--no-ext-diff",
-                        "--no-textconv", "HEAD", "--"),
-                "Baseline index changed during validation")
     print("PASS: intended layout/governance/pins/lock/links/hygiene/privacy")
     print("PASS: regular index modes; symlink/gitlink/nonregular/unmerged rejection")
     print("PASS: synthetic safety probes and fully redacted Gitleaks source scan")
     print(f"Source: {len(worktree)} worktree files; {len(index)} index files")
     print(f"Tools: Python {PINS['python']}; Gitleaks {PINS['gitleaks']}")
-    print("Index coverage: unchanged committed baseline; no candidate index qualification"
-          if baseline_index else "Index coverage: full candidate source and syntax/shape corpus")
+    print("Index coverage: full candidate source and syntax/shape corpus")
     print("C4 activation/trusted candidate byte binding; complete v1 validity not checked")
     print("Development policy owner-frozen; broader acquisition/conformance and release remain unqualified")
 

@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 import os
+import platform
 from pathlib import Path
 import secrets
 import shlex
@@ -10,6 +11,18 @@ import stat
 import subprocess
 import sys
 import tempfile
+
+
+TEST_HOST_ROOTS = {("Darwin", "arm64"): Path("/private/tmp"),
+                   ("Linux", "x86_64"): Path("/tmp")}
+
+
+def fixture_parent(system=None, machine=None):
+    host = (platform.system() if system is None else system,
+            platform.machine() if machine is None else machine)
+    if host not in TEST_HOST_ROOTS:
+        raise AssertionError("Unsupported synthetic acquisition test host")
+    return TEST_HOST_ROOTS[host]
 
 
 @dataclass(frozen=True)
@@ -44,8 +57,10 @@ class FixtureOwner:
                    ("failures", "errors", "unexpectedSuccesses"))
 
     def create_root(self):
-        root = Path(tempfile.mkdtemp(prefix="project-manifest-c3-", dir="/private/tmp"))
-        if root.is_symlink() or root.resolve().parent != Path("/private/tmp").resolve():
+        parent = fixture_parent()
+        root = Path(tempfile.mkdtemp(prefix="project-manifest-c3-", dir=parent))
+        if (root.is_symlink() or root.resolve().parent != parent.resolve()
+                or root.stat().st_uid != os.getuid()):
             raise AssertionError("Synthetic fixture escaped its approved temporary root")
         token = secrets.token_hex(24)
         marker = root / "fixture-owner"

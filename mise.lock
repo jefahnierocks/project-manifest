@@ -7,6 +7,11 @@ version = "8.30.1"
 backend = "aqua:gitleaks/gitleaks"
 specifiers = ["8.30.1"]
 
+[tools.gitleaks."platforms.linux-x64"]
+checksum = "sha256:551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+url = "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz"
+url_api = "https://api.github.com/repos/gitleaks/gitleaks/releases/assets/378332058"
+
 [tools.gitleaks."platforms.macos-arm64"]
 checksum = "sha256:b40ab0ae55c505963e365f271a8d3846efbc170aa17f2607f13df610a9aeb6a5"
 url = "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_darwin_arm64.tar.gz"
@@ -16,6 +21,11 @@ url_api = "https://api.github.com/repos/gitleaks/gitleaks/releases/assets/378332
 version = "3.13.16"
 backend = "core:python"
 specifiers = ["3.13.16"]
+
+[tools.python."platforms.linux-x64"]
+checksum = "sha256:24801ea31c7d406d559a17e2226325c723d50c56900b9c0da7b62adaae2affc9"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20261009/cpython-3.13.16+20261009-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
+provenance = "github-attestations"
 
 [tools.python."platforms.macos-arm64"]
 checksum = "sha256:11785155d0f70e634178219c20925d8f20be00a3da4684fc4f5019dd15602ef7"

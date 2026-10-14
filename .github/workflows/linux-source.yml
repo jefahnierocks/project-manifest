@@ -1,0 +1,26 @@
+name: Linux source qualification
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Prepare exact tools in owned runner temporary storage
+        id: tools
+        run: python3 -B scripts/prepare-linux-tools.py
+      - name: Validate exact source and complete index
+        env:
+          MISE_EXEC_AUTO_INSTALL: "0"
+        run: '"${{ steps.tools.outputs.python_current }}" -B scripts/validate.py'
+      - name: Observe the actual qualification floor on the same synthetic corpus
+        run: '"${{ steps.tools.outputs.python_floor }}" -B tests/run_corpus.py --scope all'

@@ -19,7 +19,7 @@ import zlib
 sys.path.insert(0, str(Path(__file__).absolute().parent.parent / "src"))
 from project_manifest import acquire as acquisition
 from project_manifest.acquire import observe_repository
-from acquisition_fixtures import FileSpec, FixtureOwner, GitFixture
+from acquisition_fixtures import FileSpec, FixtureOwner, GitFixture, fixture_parent
 
 
 DATA = b'''spec_version: "1"
@@ -1066,3 +1066,24 @@ class AcquisitionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestHostGuardTests(unittest.TestCase):
+    def test_selected_hosts_have_fixed_roots_without_fixture_creation(self):
+        with patch("acquisition_fixtures.tempfile.mkdtemp", side_effect=AssertionError("unexpected fixture")):
+            self.assertEqual(fixture_parent("Darwin", "arm64"), Path("/private/tmp"))
+            self.assertEqual(fixture_parent("Linux", "x86_64"), Path("/tmp"))
+
+    def test_unused_host_profiles_refuse_before_any_temporary_creation(self):
+        with patch("acquisition_fixtures.tempfile.mkdtemp", side_effect=AssertionError("unexpected fixture")):
+            for system, machine in (("Linux", "aarch64"), ("Darwin", "x86_64"), ("Windows", "AMD64")):
+                with self.subTest(system=system, machine=machine):
+                    with self.assertRaisesRegex(AssertionError, "Unsupported"):
+                        fixture_parent(system, machine)
+
+    def test_fixture_creation_uses_selected_parent_and_retains_existing_ownership_contract(self):
+        owner = FixtureOwner(self)
+        root = owner.create_root()
+        self.assertEqual(root.resolve().parent, fixture_parent().resolve())
+        self.assertTrue((root / "fixture-owner").is_file())
+        self.assertEqual(root.stat().st_uid, os.getuid())

@@ -15,7 +15,10 @@ def main():
     parser = argparse.ArgumentParser(description="Candidate reference corpus, never release approval")
     parser.add_argument("--scope", choices=("pure", "all"), default="all")
     args = parser.parse_args()
-    if sys.version_info < (3, 11) or (args.scope == "all" and platform.system() != "Darwin"):
+    host_supported = (platform.system(), platform.machine()) in {
+        ("Darwin", "arm64"), ("Linux", "x86_64"),
+    }
+    if sys.version_info < (3, 11) or (args.scope == "all" and not host_supported):
         print(json.dumps({"scope": args.scope, "exit_code": 2,
                           "qualification": "not_checked", "reason": "UNQUALIFIED_RUNTIME_OR_HOST"}))
         return 2

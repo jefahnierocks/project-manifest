@@ -52,10 +52,13 @@ configuration to silence them.
 The exact tools are Python 3.13.16 and Gitleaks 8.30.1. The reader, verifier and reference corpus
 use the standard library; no dependency is added. A separate qualification harness
 compares installed optional YAML loaders without installing them. The generated
-bootstrap lock covers macOS arm64 only. Other platforms, CI portability and
-the future release minimum have not been qualified.
+bootstrap lock covers macOS arm64 and Linux x64. The hosted Linux-x86_64
+source-qualification candidate prepares exact tools in owned temporary storage,
+then checks the source corpus and actual floor. Source preparation is not a
+Linux execution receipt; other platforms and the release minimum remain
+unqualified. The existing macOS source evidence is preserved.
 
-The gate checks a closed thirty-one-file source set, governance, real tool/lock
+The gate checks a closed source set, governance, real tool/lock
 agreement, all Python syntax, local Markdown links, text hygiene, private-path
 exclusion and public-safe source heuristics. Staged entries must be regular
 files at stage zero; symlink, gitlink, other modes and unmerged stages fail.
@@ -64,11 +67,10 @@ index bytes with full redaction and default rules. Temporary synthetic probes
 exercise safety failures; acquisition uses owned disposable Git graphs.
 
 The corpus runs from temporary copies of the exact candidate source bytes.
-The index must contain either the complete candidate set or the exact unchanged
-committed ten-file baseline. A baseline-only index is checked for its own
-source safety and is explicitly not qualified as candidate source. A complete
-candidate index gets a separate corpus run. The gate never stages files and
-rejects changes to observed source/index bytes during validation.
+The index must contain the complete candidate source set. The gate checks
+worktree and index bytes and runs the corpus separately for each snapshot.
+Incomplete indexes are refused. The gate never stages files and rejects
+changes to observed source/index bytes during validation.
 
 ## Candidate limits and next work
 
@@ -107,7 +109,7 @@ operation, release, vendoring or publication is performed here.
 After an authorized pin or platform change, regenerate and review the real lock:
 
 ```sh
-mise lock --platform macos-arm64
+mise lock --platform macos-arm64,linux-x64
 ```
 
 Never hand-edit generated lock metadata. A platform addition requires its own

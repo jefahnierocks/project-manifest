@@ -123,11 +123,16 @@ qualification is macOS arm64, Git 2.56 and POSIX `/dev/fd` descriptor binding.
 Bounded loose copies cost additional RAM/temporary storage, avoiding descriptor
 exhaustion for ordinary stores without mutating/repacking them. Generic platform
 declarations do not expand acquisition qualification; other
-hosts/future layouts need fresh evidence.
+hosts/future layouts need fresh evidence. The source-only Linux-x86_64 hosted
+job is prepared for that evidence; no execution receipt follows from preparation.
+It preserves all safety bounds and uses lock-authoritative Python/Gitleaks,
+separate exact floor/Git qualification pins and an owned temporary tool prefix.
+Git source trust is its official HTTPS-published checksum, not a tar-signature
+verification claim. No runtime module or acquisition acceptance rule changes.
 
 The source gate runs exact source copies and guarded synthetic Git graphs in
-ownership-marked `/private/tmp/project-manifest-c3-*` roots outside harvested
-roots. Graphs use fresh generic bytes/raw synthetic identities, never source
+ownership-marked `/private/tmp/project-manifest-c3-*` roots on macOS arm64 or
+`/tmp/project-manifest-c3-*` roots on Linux x86_64, outside harvested roots. Graphs use fresh generic bytes/raw synthetic identities, never source
 commits, real project manifests or producer inventory. Successful fixtures are
 removed after outcome; unexpected failures retain owned roots and stop the gate.
 Earlier C2 passes never qualify amended C3 source.
