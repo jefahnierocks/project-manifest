@@ -126,6 +126,88 @@ class ReleaseBindingTests(unittest.TestCase):
         self.assertIsInstance(result.diagnostics(), dict)
         return result
 
+    def released_fixture(self):
+        fixture = self.fixture()
+        fixture.table.update(format="project-manifest-release-1", release_id="1",
+                             observation_protocol="project-manifest-git-observation-1")
+        fixture.write_table()
+        return fixture
+
+    def verify_released(self, fixture, **kwargs):
+        return verify_release(fixture.root, expected_digest=fixture.expected,
+                              expected_format="project-manifest-release-1", **kwargs)
+
+    def test_released_profile_binds_closed_nine_fields_without_approving_itself(self):
+        fixture = self.released_fixture()
+        result = self.accepted(self.verify_released(fixture))
+        self.assertEqual(set(result.descriptor),
+                         {"format", "origin", "spec_version", "release_id", "source_revision",
+                          "python_minimum", "git_minimum", "observation_protocol", "files"})
+        self.assertEqual(result.descriptor["format"], "project-manifest-release-1")
+        self.assertEqual(result.descriptor["release_id"], "1")
+        self.assertEqual(result.descriptor["observation_protocol"], "project-manifest-git-observation-1")
+        self.assertEqual(result.diagnostics()["scope"], "project-manifest-release-byte-binding-1")
+        self.assertEqual(result.diagnostics()["release_approval"], "not_checked")
+        self.assertEqual(result.diagnostics()["complete_v1_validity"], "not_checked")
+        self.assertEqual(tuple(row["path"] for row in result.descriptor["files"]), PAYLOAD_FILES)
+        self.assertNotIn("runtime_allowlist", result.descriptor)
+
+    def test_candidate_and_released_profiles_never_fall_back_to_each_other(self):
+        candidate, released = self.fixture(), self.released_fixture()
+        result = self.rejected(self.verify_released(candidate))
+        self.assertEqual(result.findings, ("TABLE_IDENTITY",))
+        result = self.rejected(self.verify(released))
+        self.assertEqual(result.findings, ("TABLE_IDENTITY",))
+        self.assertEqual(self.accepted(self.verify(candidate)).diagnostics()["scope"],
+                         "candidate-offline-byte-binding")
+
+    def test_unknown_expected_profile_is_unavailable_before_any_read(self):
+        for value in ("other", "synthetic-raw-profile", None, False, [], {}):
+            with self.subTest(value=type(value).__name__), \
+                 patch("release_verifier.os.open", side_effect=AssertionError("Unqualified profile read")):
+                result = verify_release("/synthetic/unread", expected_digest="a" * 64, expected_format=value)
+                self.rejected(result, unavailable=True)
+                self.assertEqual(result.findings, ("BINDING_PROTOCOL",))
+                self.assertNotIn("synthetic-raw", json.dumps(result.diagnostics()))
+                self.assertIsNone(result.binding_format)
+
+    def test_released_headers_keys_and_every_payload_row_remain_closed(self):
+        for key, value in (("format", "candidate-binding-1"), ("origin", "other/origin"),
+                           ("spec_version", "2"), ("release_id", "candidate-1"),
+                           ("python_minimum", "3.10"), ("git_minimum", "2.55.0"),
+                           ("observation_protocol", "candidate-git-observation")):
+            with self.subTest(header=key):
+                fixture = self.released_fixture()
+                fixture.table[key] = value
+                fixture.write_table()
+                self.assertEqual(self.rejected(self.verify_released(fixture)).findings, ("TABLE_IDENTITY",))
+        for key in ("format", "origin", "spec_version", "release_id", "source_revision",
+                    "python_minimum", "git_minimum", "observation_protocol", "files"):
+            with self.subTest(missing=key):
+                fixture = self.released_fixture()
+                del fixture.table[key]
+                fixture.write_table()
+                self.assertEqual(self.rejected(self.verify_released(fixture)).findings, ("TABLE_FORMAT",))
+        fixture = self.released_fixture()
+        fixture.table["approved"] = True
+        fixture.write_table()
+        self.assertEqual(self.rejected(self.verify_released(fixture)).findings, ("TABLE_FORMAT",))
+        for path in PAYLOAD_FILES:
+            with self.subTest(payload=path):
+                fixture = self.released_fixture()
+                fixture.root.joinpath(*path.split("/")).unlink()
+                self.rejected(self.verify_released(fixture))
+
+    def test_released_profile_keeps_external_expectation_tamper_and_no_import_boundary(self):
+        fixture = self.released_fixture()
+        with patch("builtins.__import__", side_effect=AssertionError("Payload import attempted")):
+            self.accepted(self.verify_released(fixture))
+        result = verify_release(fixture.root, expected_digest="0" * 64,
+                                expected_format="project-manifest-release-1")
+        self.assertEqual(self.rejected(result).findings, ("EXPECTED_DIGEST",))
+        fixture.replace_payload("src/project_manifest/acquire.py", b"Synthetic changed bytes\n")
+        self.assertEqual(self.rejected(self.verify_released(fixture)).findings, ("PAYLOAD_DIGEST",))
+
     def test_exact_canonical_binding_requires_independent_domain_separated_expectation(self):
         fixture = self.fixture()
         self.assertEqual(tuple(sorted(PAYLOAD_FILES)), PAYLOAD_FILES)

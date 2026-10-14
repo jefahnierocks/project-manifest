@@ -149,3 +149,44 @@ The adapter uses [Git command/environment controls](https://git-scm.com/docs/git
 [literal object reads](https://git-scm.com/docs/git-cat-file) and
 [NUL-delimited index output](https://git-scm.com/docs/git-ls-files).
 The index debug format can change; unsupported output is refused.
+
+## Released source observation protocol
+
+The new API in project_manifest.acquire is observe_released_repository(root,
+mode=..., reference_date=..., rev=..., common_dir=...). It normalizes the explicit
+reference day through the existing day checker and calls observe_repository once.
+Candidate CLI/API behavior is unchanged. The accepted record and same immutable
+TreeSnapshot are returned by identity, without another declaration check,
+acquisition or caller-tree acceptance lane. Interrupt/cancellation propagates.
+
+The diagnostics mapping has exactly fourteen keys: scope, exit_code,
+declaration_checks, complete_v1_validity, findings, mode, reference_date,
+commit_oid, tree_oid, manifest_blob_oid, manifest_sha256, observation_digest,
+git_version, tree_observation. Scope is project-manifest-git-observation-1.
+Declaration status remains 0/1/2 with passed/failed/not_checked respectively.
+Complete-v1 validity is always not_checked in direct source output; independently
+reviewed consumer approval/binding and authenticated acquired evidence are needed
+to derive valid/invalid. Native conformance/admission/runtime acceptance remain
+separate, and later conformance exits cannot replace the declaration result.
+
+A passed result has no findings and retains the record/tree. Failed/unavailable
+results have neither. One finding contains only the existing fixed code and
+nonnegative bounded integer line/column; field names, raw acquisition reasons,
+paths and records are omitted. The existing twenty code identifiers are closed;
+NOT_CHECKED means unavailable, never a known-invalid declaration. Inconsistent
+candidate or pure-tree results become unavailable rather than being promoted.
+Every optional provenance key is present, using null for unavailable evidence.
+
+Known invalid results retain reliable mode-specific observation metadata and the
+explicit request day, including missing/nonregular/oversized or syntax-invalid
+manifest cases. Rev records full commit/tree and available manifest-blob identity;
+staged has no commit/tree claim; worktree has no blob/commit/tree claim. Object IDs
+have one consistent 40/64 width. Acquired accepted bytes bind manifest/observation
+SHA-256 and measured Git version. Unavailable acquisition attests no partial
+provenance. The three tree_observation values remain frozen-revision-tree,
+frozen-stage-zero-index and tracked-working-bytes; only rev is committed evidence.
+
+This serialization profile changes no C1/C2 rule, storage bound or runtime
+prerequisite. It adds no release approval, discovery, execution, runtime equality
+allowlist or installed host reader. Changed source must receive its own executed
+qualification; earlier candidate/hosted receipts do not qualify these new bytes.

@@ -32,6 +32,11 @@ HEADERS = {
     "spec_version": "1", "release_id": "candidate-1", "python_minimum": "3.11",
     "git_minimum": "2.56.0",
 }
+RELEASE_HEADERS = {
+    **HEADERS, "format": "project-manifest-release-1", "release_id": "1",
+    "observation_protocol": "project-manifest-git-observation-1",
+}
+BINDING_FORMATS = frozenset({"candidate-binding-1", "project-manifest-release-1"})
 DIRECTORIES = frozenset(
     "/".join(path.split("/")[:depth])
     for path in PAYLOAD_FILES for depth in range(1, len(path.split("/")))
@@ -43,10 +48,14 @@ class VerificationResult:
     exit_code: int
     findings: tuple[str, ...]
     descriptor: dict | None = None
+    binding_format: str | None = "candidate-binding-1"
 
     def diagnostics(self):
         return {
-            "scope": "candidate-offline-byte-binding",
+            "scope": {
+                "candidate-binding-1": "candidate-offline-byte-binding",
+                "project-manifest-release-1": "project-manifest-release-byte-binding-1",
+            }.get(self.binding_format, "offline-byte-binding-protocol-unavailable"),
             "exit_code": self.exit_code, "findings": list(self.findings),
             "bytes_verified": self.exit_code == 0,
             "release_approval": "not_checked", "complete_v1_validity": "not_checked",
@@ -173,7 +182,8 @@ def _object(pairs):
     return record
 
 
-def _descriptor(data):
+def _descriptor(data, *, expected_format="candidate-binding-1"):
+    headers = HEADERS if expected_format == "candidate-binding-1" else RELEASE_HEADERS
     try:
         record = json.loads(data.decode("ascii"), object_pairs_hook=_object)
         canonical = (json.dumps(record, ensure_ascii=True, sort_keys=True,
@@ -181,8 +191,10 @@ def _descriptor(data):
     except (UnicodeError, ValueError, RecursionError, TypeError):
         raise _Failure("TABLE_FORMAT") from None
     _require(data == canonical and type(record) is dict, "TABLE_FORMAT")
-    _require(set(record) == set(HEADERS) | {"source_revision", "files"}, "TABLE_FORMAT")
-    _require(all(record[key] == value for key, value in HEADERS.items()), "TABLE_IDENTITY")
+    if "format" in record:
+        _require(record["format"] == expected_format, "TABLE_IDENTITY")
+    _require(set(record) == set(headers) | {"source_revision", "files"}, "TABLE_FORMAT")
+    _require(all(record[key] == value for key, value in headers.items()), "TABLE_IDENTITY")
     revision = record["source_revision"]
     _require(type(revision) is str and bool(re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", revision)),
              "TABLE_IDENTITY")
@@ -201,14 +213,19 @@ def _descriptor(data):
     return record
 
 
-def verify_release(root, *, expected_digest):
-    """Require an independently trusted digest; never import or execute payload."""
+def verify_release(root, *, expected_digest, expected_format="candidate-binding-1"):
+    """Inspect one explicitly selected byte profile; never approve or import it."""
+    if type(expected_format) is not str or expected_format not in BINDING_FORMATS:
+        return VerificationResult(2, ("BINDING_PROTOCOL",), binding_format=None)
+
+    def result(exit_code, findings, descriptor=None):
+        return VerificationResult(exit_code, findings, descriptor, expected_format)
     if type(expected_digest) is not str or not re.fullmatch(r"[0-9a-f]{64}", expected_digest):
-        return VerificationResult(2, ("EXPECTED_DIGEST_UNAVAILABLE",))
+        return result(2, ("EXPECTED_DIGEST_UNAVAILABLE",))
     if sys.version_info < (3, 11) or os.name != "posix" or not all(
         hasattr(os, flag) for flag in ("O_DIRECTORY", "O_NOFOLLOW", "O_NONBLOCK")
     ):
-        return VerificationResult(2, ("RUNTIME_UNAVAILABLE",))
+        return result(2, ("RUNTIME_UNAVAILABLE",))
     fd = None
     try:
         fd = _open_root(root)
@@ -217,7 +234,7 @@ def verify_release(root, *, expected_digest):
         _require(set(layout) == set(PAYLOAD_FILES) | DIRECTORIES | {TABLE_NAME}, "LAYOUT")
         table, table_info = _read(fd, TABLE_NAME, MAX_TABLE_BYTES)
         _require(table_info == layout[TABLE_NAME], "BINDING_CHANGED")
-        descriptor = _descriptor(table)
+        descriptor = _descriptor(table, expected_format=expected_format)
         _require(hashlib.sha256(DOMAIN + table).hexdigest() == expected_digest, "EXPECTED_DIGEST")
         for row in descriptor["files"]:
             data, info = _read(fd, row["path"], MAX_FILE_BYTES)
@@ -231,11 +248,11 @@ def verify_release(root, *, expected_digest):
             _require(_fingerprint(os.fstat(rebound)) == root_info, "BINDING_CHANGED")
         finally:
             os.close(rebound)
-        return VerificationResult(0, (), descriptor)
+        return result(0, (), descriptor)
     except _Failure as error:
-        return VerificationResult(error.exit_code, (error.code,))
+        return result(error.exit_code, (error.code,))
     except (OSError, ValueError, RecursionError, OverflowError):
-        return VerificationResult(1, ("BINDING_UNAVAILABLE_OR_CHANGED",))
+        return result(1, ("BINDING_UNAVAILABLE_OR_CHANGED",))
     finally:
         if fd is not None:
             os.close(fd)

@@ -996,3 +996,115 @@ def observe_repository(root, *, mode, rev=None, reference_date=None, common_dir=
     finally:
         if store is not None:
             store.close()
+
+
+# Transport identity only: direct source cannot authenticate release approval.
+RELEASED_OBSERVATION_SCOPE = "project-manifest-git-observation-1"
+RELEASED_FINDING_CODES = frozenset({
+    "BYTE_PROFILE", "DATE_FORMAT", "FIELD_BOUND", "FIELD_TYPE", "GRAMMAR",
+    "KEY_DUPLICATE", "KEY_REQUIRED", "KEY_UNKNOWN", "LEGACY_VERSION",
+    "NOT_CHECKED", "REFERENCE_PATH", "VERSION_LINE", "DATE_RULE",
+    "ENUM_UNSUPPORTED", "FIELD_RELATION", "LIST_DUPLICATE", "REFERENCE_MISSING",
+    "REFERENCE_MODE", "ROLE_RELATION", "TARGET_RULE",
+})
+_RELEASED_TREES = {
+    "rev": "frozen-revision-tree", "staged": "frozen-stage-zero-index",
+    "worktree": "tracked-working-bytes",
+}
+
+
+def _released_unavailable(mode, day):
+    return {
+        "scope": RELEASED_OBSERVATION_SCOPE, "exit_code": 2,
+        "declaration_checks": "not_checked", "complete_v1_validity": "not_checked",
+        "findings": [{"code": "NOT_CHECKED", "line": 0, "column": 0}],
+        "mode": mode if type(mode) is str and mode in _RELEASED_TREES else None,
+        "reference_date": day, "commit_oid": None, "tree_oid": None,
+        "manifest_blob_oid": None, "manifest_sha256": None,
+        "observation_digest": None, "git_version": None, "tree_observation": None,
+    }
+
+
+def observe_released_repository(root, *, mode, reference_date, rev=None, common_dir=None):
+    """Serialize one C3 observation; approval/binding remain consumer prerequisites.
+
+    A day is explicit, with the existing date normalization. No caller-tree API,
+    second acquisition, declaration algorithm or complete-v1 approval is added.
+    Candidate APIs and diagnostics are unchanged. Interrupt/cancellation propagates.
+    """
+    report = _released_unavailable(mode, None)
+    try:
+        day = _reference_day(reference_date).isoformat()
+    except _Failure:
+        return ObservationResult(2, report)
+    report = _released_unavailable(mode, day)
+    try:
+        observed = observe_repository(root, mode=mode, rev=rev,
+                                      reference_date=day, common_dir=common_dir)
+        status, diagnostics = observed.exit_code, observed.diagnostics
+        if (type(observed) is not ObservationResult or type(status) is not int
+                or status not in (0, 1, 2) or type(diagnostics) is not dict
+                or diagnostics.get("scope") != "candidate-git-observation"
+                or type(diagnostics.get("exit_code")) is not int
+                or diagnostics["exit_code"] != status
+                or diagnostics.get("candidate_declaration_accepted") is not (status == 0)
+                or diagnostics.get("complete_v1_validity") != "not_checked"
+                or diagnostics.get("mode") != report["mode"]
+                or (diagnostics.get("reference_date") != day
+                    and (status == 0 or diagnostics.get("reference_date") is not None))):
+            raise ValueError
+        raw_findings = diagnostics.get("findings")
+        if type(raw_findings) is not list or len(raw_findings) != int(status != 0):
+            raise ValueError
+        findings = []
+        for item in raw_findings:
+            if (type(item) is not dict or type(item.get("code")) is not str
+                    or item["code"] not in RELEASED_FINDING_CODES
+                    or (item["code"] == "NOT_CHECKED") is not (status == 2)
+                    or any(type(item.get(key)) is not int or not 0 <= item[key] <= 65_536
+                           for key in ("line", "column"))):
+                raise ValueError
+            findings.append({key: item[key] for key in ("code", "line", "column")})
+        if status == 0:
+            if (type(observed.record) is not dict or type(observed.tree) is not TreeSnapshot
+                    or observed.tree.complete is not True or type(observed.tree.entries) is not tuple):
+                raise ValueError
+        elif observed.record is not None or observed.tree is not None:
+            raise ValueError
+        provenance = {key: diagnostics.get(key) for key in
+                      ("commit_oid", "tree_oid", "manifest_blob_oid", "manifest_sha256",
+                       "observation_digest", "git_version")}
+        if status != 2:
+            if (not re.fullmatch(r"[0-9a-f]{64}", provenance["observation_digest"] or "")
+                    or not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", provenance["git_version"] or "")
+                    or (status == 0 and provenance["manifest_sha256"] is None)):
+                raise ValueError
+            if provenance["manifest_sha256"] is not None and not re.fullmatch(
+                    r"[0-9a-f]{64}", provenance["manifest_sha256"]):
+                raise ValueError
+            required = {"commit_oid", "tree_oid"} if mode == "rev" else set()
+            if status == 0 and mode != "worktree":
+                required.add("manifest_blob_oid")
+            present = []
+            for key in ("commit_oid", "tree_oid", "manifest_blob_oid"):
+                value = provenance[key]
+                if value is None:
+                    if key in required:
+                        raise ValueError
+                    continue
+                if (mode == "worktree" or (mode == "staged" and key != "manifest_blob_oid")
+                        or type(value) is not str
+                        or re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", value) is None):
+                    raise ValueError
+                present.append(len(value))
+            if len(set(present)) > 1:
+                raise ValueError
+        else:
+            # Unavailable acquisition cannot attest partially computed provenance.
+            provenance = {key: None for key in provenance}
+        report.update(exit_code=status, declaration_checks=("passed", "failed", "not_checked")[status],
+                      findings=findings, tree_observation=_RELEASED_TREES.get(mode) if status != 2 else None,
+                      **provenance)
+        return ObservationResult(status, report, observed.record, observed.tree)
+    except Exception:
+        return ObservationResult(2, _released_unavailable(mode, day))

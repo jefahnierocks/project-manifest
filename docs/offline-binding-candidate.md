@@ -112,3 +112,33 @@ approved vocabulary, full platform/runtime corpus, private grammar diagnostic,
 and consumer lock/admission must all receive their separate owner review before
 a complete immutable release can be approved. C4 adds no exporter, installer,
 vendoring command, CI change or runtime operation.
+
+## Released source descriptor profile
+
+The bootstrap now accepts a second explicitly selected engineering profile through
+verify_release(root, expected_digest=..., expected_format="project-manifest-release-1").
+The default and standalone candidate invocation retain candidate-binding-1.
+An unknown expected_format returns BINDING_PROTOCOL / 2 before filesystem access.
+A mixed candidate/released table is TABLE_IDENTITY / 1, with no fallback.
+
+The released profile has nine closed fields: format, origin, spec_version,
+release_id, source_revision, python_minimum, git_minimum, observation_protocol,
+files. Format is project-manifest-release-1; release_id is string 1 and
+observation_protocol is project-manifest-git-observation-1. Other fixed headers
+retain the existing origin, string specification 1, Python 3.11 and Git 2.56.0
+prerequisites. Source-revision/row rules, the twenty payload paths, table hash
+domain, canonical encoding, bounds and no-follow/tamper checks are unchanged.
+No runtime tuple field or version-equality policy is added.
+
+This interface verifies bytes, not release approval. Its diagnostics use
+project-manifest-release-byte-binding-1 and still report release_approval and
+complete_v1_validity as not_checked. The bootstrap remains independently reviewed
+and pinned outside the payload. A consumer selects its repo-owned reviewed
+vendoring binding at its trusted entrypoint, captures verified runtime bytes
+before import, and invokes the selected observation protocol once. An argv digest,
+table identity, caller Boolean or arbitrary approval file cannot supply that trust.
+The six runtime paths remain fixed; module names are not supplied by the table.
+
+No released artifact, export, consumer binding, installation or publication is
+created by this source profile. Actual support/qualification receipts, final
+immutable release/trust and normal consumer acceptance remain separate.

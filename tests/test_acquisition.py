@@ -1068,6 +1068,177 @@ if __name__ == "__main__":
     unittest.main()
 
 
+class ReleasedObservationTests(unittest.TestCase):
+    """New transport, the same one C3 acquisition, no independent approval."""
+
+    def setUp(self):
+        self.owner = FixtureOwner(self)
+
+    def fixture(self, entries=None, *, object_format="sha1"):
+        return GitFixture(self.owner, object_format=object_format).seed(files() if entries is None else entries)
+
+    def observe(self, fixture, mode="rev", **kwargs):
+        return acquisition.observe_released_repository(fixture.path, mode=mode,
+            rev="HEAD" if mode == "rev" else None, reference_date="2026-01-01", **kwargs)
+
+    def closed(self, result, status):
+        self.assertEqual(result.exit_code, status)
+        report = result.diagnostics
+        self.assertEqual(set(report), {"scope", "exit_code", "declaration_checks", "complete_v1_validity",
+            "findings", "mode", "reference_date", "commit_oid", "tree_oid", "manifest_blob_oid",
+            "manifest_sha256", "observation_digest", "git_version", "tree_observation"})
+        self.assertEqual(report["scope"], "project-manifest-git-observation-1")
+        self.assertEqual(report["exit_code"], status)
+        self.assertEqual(report["declaration_checks"], ("passed", "failed", "not_checked")[status])
+        self.assertEqual(report["complete_v1_validity"], "not_checked")
+        self.assertNotIn("candidate_declaration_accepted", report)
+        self.assertEqual(len(report["findings"]), int(status != 0))
+        for item in report["findings"]:
+            self.assertEqual(set(item), {"code", "line", "column"})
+        if status:
+            self.assertIsNone(result.record)
+            self.assertIsNone(result.tree)
+        return report
+
+    def test_three_modes_and_both_oid_widths_use_the_existing_acquisition_once(self):
+        for object_format in ("sha1", "sha256"):
+            fixture = self.fixture(object_format=object_format)
+            for mode in ("rev", "staged", "worktree"):
+                with self.subTest(mode=mode, format=object_format):
+                    original = acquisition.observe_repository
+                    with patch.object(acquisition, "observe_repository", wraps=original) as observer:
+                        result = self.observe(fixture, mode)
+                    observer.assert_called_once_with(fixture.path, mode=mode,
+                        rev="HEAD" if mode == "rev" else None, reference_date="2026-01-01", common_dir=None)
+                    report = self.closed(result, 0)
+                    self.assertEqual(report["reference_date"], "2026-01-01")
+                    self.assertEqual(report["manifest_sha256"], hashlib.sha256(DATA).hexdigest())
+                    self.assertRegex(report["observation_digest"], r"^[a-f0-9]{64}$")
+                    self.assertEqual(report["tree_observation"],
+                        {"rev":"frozen-revision-tree", "staged":"frozen-stage-zero-index",
+                         "worktree":"tracked-working-bytes"}[mode])
+                    self.assertEqual(report["commit_oid"], fixture.head if mode == "rev" else None)
+                    self.assertEqual(report["tree_oid"], fixture.tree if mode == "rev" else None)
+                    self.assertEqual(report["manifest_blob_oid"], fixture.blobs["project.yaml"] if mode != "worktree" else None)
+
+    def test_distinct_revision_index_and_working_bytes_keep_their_own_identity(self):
+        fixture = self.fixture()
+        staged = DATA.replace(b"Synthetic example", b"Synthetic staged")
+        working = DATA.replace(b"Synthetic example", b"Synthetic working")
+        fixture.set_index(files(staged))
+        (fixture.path / "project.yaml").write_bytes(working)
+        reports = {}
+        for mode, data, name in (("rev", DATA, "Synthetic example"),
+                                ("staged", staged, "Synthetic staged"),
+                                ("worktree", working, "Synthetic working")):
+            with self.subTest(mode=mode):
+                result = self.observe(fixture, mode)
+                reports[mode] = self.closed(result, 0)
+                self.assertEqual(reports[mode]["manifest_sha256"], hashlib.sha256(data).hexdigest())
+                self.assertEqual(result.record["project"]["display_name"], name)
+        self.assertEqual(len({r["manifest_sha256"] for r in reports.values()}), 3)
+        self.assertIsNone(reports["staged"]["commit_oid"])
+        self.assertIsNone(reports["worktree"]["manifest_blob_oid"])
+
+    def test_unresolved_revision_is_unavailable_without_reacquisition_or_raw_ref(self):
+        fixture = self.fixture()
+        original = acquisition.observe_repository
+        with patch.object(acquisition, "observe_repository", wraps=original) as observer:
+            result = acquisition.observe_released_repository(fixture.path, mode="rev",
+                rev="synthetic-unresolved-reference", reference_date="2026-01-01")
+        observer.assert_called_once_with(fixture.path, mode="rev", rev="synthetic-unresolved-reference",
+                                        reference_date="2026-01-01", common_dir=None)
+        report = self.closed(result, 2)
+        self.assertEqual(report["reference_date"], "2026-01-01")
+        self.assertIsNone(report["observation_digest"])
+        self.assertNotIn("synthetic-unresolved-reference", json.dumps(report))
+
+    def test_same_accepted_record_and_tree_objects_are_returned_without_revalidation(self):
+        fixture = self.fixture()
+        observed = observe_repository(fixture.path, mode="rev", rev="HEAD", reference_date="2026-01-01")
+        with patch.object(acquisition, "observe_repository", return_value=observed) as observer, \
+             patch.object(acquisition, "check_declaration", side_effect=AssertionError("Second declaration check")):
+            result = self.observe(fixture)
+        observer.assert_called_once()
+        self.closed(result, 0)
+        self.assertIs(result.record, observed.record)
+        self.assertIs(result.tree, observed.tree)
+
+    def test_known_invalid_manifest_cases_keep_acquired_provenance_and_explicit_day(self):
+        cases = [
+            ("missing", {k:v for k,v in files().items() if k != "project.yaml"}, "KEY_REQUIRED"),
+            ("nonregular", dict(files(), **{"project.yaml":FileSpec("120000", b"docs/status.example")}), "REFERENCE_PATH"),
+            ("oversized", files(DATA + b"\n" * (65_537-len(DATA))), "FIELD_BOUND"),
+            ("syntax", files(DATA.replace(b"role: canonical", b"role: yes")), None),
+        ]
+        for label, entries, code in cases:
+            fixture = self.fixture(entries)
+            for mode in ("rev", "staged", "worktree"):
+                with self.subTest(case=label, mode=mode):
+                    report = self.closed(self.observe(fixture, mode), 1)
+                    if code is not None:
+                        self.assertEqual(report["findings"][0]["code"], code)
+                    self.assertNotEqual(report["findings"][0]["code"], "NOT_CHECKED")
+                    self.assertEqual(report["reference_date"], "2026-01-01")
+                    self.assertRegex(report["observation_digest"], r"^[a-f0-9]{64}$")
+                    self.assertEqual(report["commit_oid"], fixture.head if mode == "rev" else None)
+
+    def test_unavailable_storage_and_bad_inputs_are_closed_and_value_blind(self):
+        result = acquisition.observe_released_repository("/synthetic/absent-source", mode="rev",
+            rev="HEAD", reference_date="2026-01-01")
+        report = self.closed(result, 2)
+        self.assertTrue(all(report[key] is None for key in ("commit_oid","tree_oid","manifest_blob_oid",
+            "manifest_sha256","observation_digest","git_version","tree_observation")))
+        self.assertEqual(report["reference_date"], "2026-01-01")
+        for day in (None, "2026-02-30", "synthetic-raw-day", False, b"2026-01-01"):
+            with self.subTest(day=type(day).__name__), \
+                 patch.object(acquisition, "observe_repository", side_effect=AssertionError("Missing day acquired")):
+                report = self.closed(acquisition.observe_released_repository("/synthetic/root",
+                    mode="rev", rev="HEAD", reference_date=day), 2)
+                self.assertIsNone(report["reference_date"])
+                self.assertNotIn("synthetic-raw", json.dumps(report))
+
+    def test_mixed_pure_and_malformed_candidate_observations_do_not_enter_the_protocol(self):
+        from copy import deepcopy
+        from dataclasses import replace
+        fixture = self.fixture()
+        accepted = observe_repository(fixture.path, mode="rev", rev="HEAD", reference_date="2026-01-01")
+        changes = [
+            ("scope", "candidate-declaration-tree-records"), ("exit_code", False),
+            ("candidate_declaration_accepted", False), ("complete_v1_validity", "valid"),
+            ("manifest_sha256", None), ("observation_digest", "invalid"),
+            ("git_version", "synthetic-raw-version"), ("commit_oid", None), ("mode", "staged"),
+            ("reference_date", "2025-01-01"),
+            ("findings", [{"code":"synthetic-raw-code","line":0,"column":0}]),
+        ]
+        for key,value in changes:
+            with self.subTest(key=key):
+                diagnostics = deepcopy(accepted.diagnostics)
+                diagnostics[key] = value
+                with patch.object(acquisition, "observe_repository",
+                                  return_value=replace(accepted, diagnostics=diagnostics)) as observer:
+                    report = self.closed(self.observe(fixture), 2)
+                observer.assert_called_once()
+                self.assertNotIn("synthetic-raw", json.dumps(report))
+        from project_manifest import check_declaration
+        pure = check_declaration(DATA, tree=accepted.tree, reference_date="2026-01-01")
+        with patch.object(acquisition, "observe_repository", return_value=pure):
+            self.closed(self.observe(fixture), 2)
+
+    def test_observer_failure_is_not_retried_or_echoed_and_cancellation_propagates(self):
+        with patch.object(acquisition, "observe_repository",
+                          side_effect=RuntimeError("synthetic-raw-observer-error")) as observer:
+            report = self.closed(acquisition.observe_released_repository("/synthetic/root",
+                mode="rev", rev="HEAD", reference_date="2026-01-01"), 2)
+            observer.assert_called_once()
+            self.assertNotIn("synthetic-raw", json.dumps(report))
+        for error in (KeyboardInterrupt, SystemExit):
+            with patch.object(acquisition, "observe_repository", side_effect=error):
+                with self.assertRaises(error):
+                    acquisition.observe_released_repository("/synthetic/root", mode="rev",
+                        rev="HEAD", reference_date="2026-01-01")
+
+
 class TestHostGuardTests(unittest.TestCase):
     def test_selected_hosts_have_fixed_roots_without_fixture_creation(self):
         with patch("acquisition_fixtures.tempfile.mkdtemp", side_effect=AssertionError("unexpected fixture")):
