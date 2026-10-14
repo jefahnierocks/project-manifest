@@ -92,10 +92,11 @@ semantic controls without synthetic Git graphs. CLI tests belong to the full
 acquisition lane because some create synthetic Git graphs. `--scope all` also runs
 guarded acquisition and, in the trusted origin source, bootstrap tamper tests.
 Those fixtures use fixed owned macOS-arm64 or Linux-x86_64 temporary roots.
-Other full-acquisition hosts return exit 2 before fixture creation. The prepared
-Linux hosted job must supply an actual exact-source execution receipt; Linux
-qualification remains open until then. Pure test portability and source-only
-host support are not full acquisition qualification. These are source test interfaces, not an installed command.
+Other full-acquisition hosts return exit 2 before fixture creation. Linux
+full-acquisition qualification requires an actual exact-source execution receipt
+from the prepared hosted job. Pure test portability and source-only host support
+are not full acquisition qualification and do not qualify other hosts. These are
+source test interfaces, not an installed command.
 
 `python -B tests/compare_loaders.py` compares fresh inline synthetic vectors
 with already-installed PyYAML SafeLoader/CSafeLoader and Ruby Psych safe loading.
@@ -108,10 +109,11 @@ Neither an earlier prototype comparison nor this bounded engine sample is
 complete release qualification.
 
 The closed normative/runtime/corpus inventory, bootstrap trust mechanism,
-approved vocabulary, full platform/runtime corpus, private grammar diagnostic,
-and consumer lock/admission must all receive their separate owner review before
-a complete immutable release can be approved. C4 adds no exporter, installer,
-vendoring command, CI change or runtime operation.
+approved vocabulary, full platform/runtime corpus, private grammar diagnostic
+and consumer trust/binding/admission design require separate owner review before
+a complete immutable release is approved. Actual consumer binding and adoption
+follow that approved release under their separate gates. C4 adds no exporter,
+installer, vendoring command, CI change or runtime operation.
 
 ## Released source descriptor profile
 
@@ -211,5 +213,6 @@ Origin assembly tests remain in tests/test_binding.py and reuse the existing
 owned synthetic Git fixtures, whose plumbing strips inherited Git context.
 The gate includes the origin-only script in its 35-file source/corpus-copy set;
 PAYLOAD_FILES stays twenty and the six runtime paths, pins and workflow are
-unchanged. Actual final artifact freeze still requires the private diagnostic,
-exact bootstrap/artifact trust and normal release/consumer acceptance.
+unchanged. Actual final artifact freeze requires the private diagnostic and the
+owner's exact artifact, bootstrap trust and release acceptance. Consumer binding
+and adoption follow the approved release under their separate acceptance gates.
