@@ -142,3 +142,74 @@ The six runtime paths remain fixed; module names are not supplied by the table.
 No released artifact, export, consumer binding, installation or publication is
 created by this source profile. Actual support/qualification receipts, final
 immutable release/trust and normal consumer acceptance remain separate.
+
+## Origin-only candidate assembler source
+
+The origin script scripts/assemble-release.py prepares an unapproved local
+candidate; it is not distributed as payload or loaded by consumers. Its API is
+assemble_candidate(source_root, expected_revision=..., output_parent=...,
+common_dir=...). The CLI derives its own source root and takes --source-revision,
+--output-parent and optional --git-common-dir. Assembly execution still needs
+its task authority; source preparation is not release approval.
+
+The selected full committed OID must equal captured HEAD. Existing C3 FrozenStore
+and GitView supply contained literal Git-object reads, tree/index evidence and
+source-storage rechecks. Every tracked leaf is a regular file; literal index
+object/mode identities and descriptor-relative working bytes must match the
+commit. Plain status/diff, source filters/hooks/fsmonitor and export substitution
+are not used. The twenty payload bytes come from their verified committed blob
+IDs, never from later worktree/index content. The existing source gate alone
+does not prove that revision/byte relationship.
+
+Committed ignore files are projected into owned capture storage. Contained
+Git check-ignore classifies bounded untracked names against those captured rules,
+with its cwd explicitly anchored to the projection and blanket literal-pathspec
+mode disabled only for this path-input command. Source configuration is not
+imported and ignored file contents are not opened. Nonignored
+extra source, changed revision/index/working evidence, unavailable storage or
+unexpected mutation stops candidate finalization.
+
+Output parent is an existing no-symlink build/dist directory under this origin,
+with a newly exclusive private container. A marker outside the closed staged
+bundle identifies ownership. Files are written descriptor-relative with exclusive
+no-follow creation. The only shared encoder is the bootstrap's pure
+canonical_table_bytes; inventory, headers, domain and bounds come from that
+read-only verifier. The assembler verifies the completed stage with the real
+released-profile verifier initially and again after final source checks, before
+an atomic no-replace local rename to bundle. Output parent, container and retained
+staging directories use assembler-local device/inode/type/mode/ownership identities
+that permit the assembler's own entry creation; C3's full source identities are
+unchanged. Exact container membership and the owner token remain required.
+Unavailable atomic no-replace support is coded unavailable, not a weaker fallback.
+Finalization is a local candidate operation, never publication or approval.
+
+Temporary capture cleanup and source descriptor closes finish before final output
+checks. The unnecessary parent descriptor closes before final closed byte
+verification. Every transferred
+owned descriptor is closed independently at most once, including after an earlier
+close error. Ordinary precommit cleanup failure prevents finalization. Successful
+atomic no-replace rename is the commit point: an ordinary final descriptor-close
+error preserves exit 0 with CANDIDATE_FINALIZED_CLEANUP_WARNING and the same byte
+receipt, without exposing the raw error. The candidate already exists at that point.
+
+The last closed byte verification detects intervening staged-byte mutation during
+source checks and cleanup. It does not freeze files against another process
+with write access
+after verification returns. Mutation between final verification and rename, or
+later changes to the candidate, remains outside this assembly receipt; final
+immutable artifact freeze and consumer trust require their separate acceptance.
+
+An ordinary precommit failure creates no finalized candidate. Fatal interruption
+and concurrent mutation remain outside the receipt, including the interval after
+verification or a commit completed before interruption. Partial owned output
+remains private for diagnosis; no existing output or foreign marker is overwritten or recursively
+removed. A successful fixed-code receipt records actual commit/tree identities,
+table digest and relative bundle name, with release_approval/full-v1 not_checked.
+No archive/tag/upload/install/consumer-binding or root-manifest action is added.
+
+Origin assembly tests remain in tests/test_binding.py and reuse the existing
+owned synthetic Git fixtures, whose plumbing strips inherited Git context.
+The gate includes the origin-only script in its 35-file source/corpus-copy set;
+PAYLOAD_FILES stays twenty and the six runtime paths, pins and workflow are
+unchanged. Actual final artifact freeze still requires the private diagnostic,
+exact bootstrap/artifact trust and normal release/consumer acceptance.

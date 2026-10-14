@@ -182,12 +182,17 @@ def _object(pairs):
     return record
 
 
+def canonical_table_bytes(record):
+    """One pure canonical encoder; no filesystem, packaging or approval behavior."""
+    return (json.dumps(record, ensure_ascii=True, sort_keys=True,
+                       separators=(",", ":"), allow_nan=False) + "\n").encode("ascii")
+
+
 def _descriptor(data, *, expected_format="candidate-binding-1"):
     headers = HEADERS if expected_format == "candidate-binding-1" else RELEASE_HEADERS
     try:
         record = json.loads(data.decode("ascii"), object_pairs_hook=_object)
-        canonical = (json.dumps(record, ensure_ascii=True, sort_keys=True,
-                                separators=(",", ":"), allow_nan=False) + "\n").encode("ascii")
+        canonical = canonical_table_bytes(record)
     except (UnicodeError, ValueError, RecursionError, TypeError):
         raise _Failure("TABLE_FORMAT") from None
     _require(data == canonical and type(record) is dict, "TABLE_FORMAT")

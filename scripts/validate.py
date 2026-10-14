@@ -32,6 +32,7 @@ CANDIDATE_FILES = {
     "docs/offline-binding-candidate.md", "tests/run_corpus.py",
     "tests/compare_loaders.py", "scripts/prepare-linux-tools.py",
     "tests/test_tool_preparation.py", ".github/workflows/linux-source.yml",
+    "scripts/assemble-release.py",
 }
 FILES = BASELINE_FILES | CANDIDATE_FILES
 PRIVATE_DATA = re.compile(

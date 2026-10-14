@@ -725,6 +725,369 @@ class ReleaseBindingTests(unittest.TestCase):
         self.assertNotIn(marker, repr(result))
         self.assertEqual(stdout.getvalue() + stderr.getvalue(), "")
 
+class AssemblyTests(unittest.TestCase):
+    """Owned synthetic origin graphs; no actual source bundle or release."""
+
+    @classmethod
+    def setUpClass(cls):
+        import importlib.util
+        name = "origin_assembly_test_subject"
+        spec = importlib.util.spec_from_file_location(name, ROOT / "scripts/assemble-release.py")
+        cls.assembly = importlib.util.module_from_spec(spec)
+        sys.modules[name] = cls.assembly
+        spec.loader.exec_module(cls.assembly)
+
+    def setUp(self):
+        self.owner = FixtureOwner(self)
+
+    def fixture(self, *, object_format="sha1", changed=None):
+        from acquisition_fixtures import FileSpec, GitFixture
+        entries = {name: FileSpec("100644", ("Synthetic fixed bytes for " + name + "\n").encode())
+                   for name in PAYLOAD_FILES}
+        entries[".gitignore"] = FileSpec("100644", b"/build/\n/dist/\nprivate/\n*.pyc\n")
+        if changed:
+            entries.update(changed)
+        fixture = GitFixture(self.owner, object_format=object_format).seed(entries)
+        (fixture.path / "build").mkdir()
+        (fixture.path / "dist").mkdir()
+        return fixture
+
+    def assemble(self, fixture, *, parent="build", revision=None):
+        return self.assembly.assemble_candidate(str(fixture.path),
+            expected_revision=fixture.head if revision is None else revision,
+            output_parent=str(fixture.path / parent))
+
+    def bundle(self, fixture, result, parent="build"):
+        self.assertEqual(result.exit_code, 0, result.diagnostics())
+        self.assertEqual(result.code, "CANDIDATE_FINALIZED")
+        self.assertEqual(result.source_revision, fixture.head)
+        self.assertEqual(result.tree_oid, fixture.tree)
+        self.assertEqual(result.diagnostics()["release_approval"], "not_checked")
+        self.assertEqual(result.diagnostics()["complete_v1_validity"], "not_checked")
+        self.assertNotIn("paths", result.diagnostics())
+        return fixture.path / parent / result.bundle_name
+
+    def test_precommit_capture_source_and_parent_cleanup_failures_never_finalize(self):
+        for selection in ("capture", "source", "parent"):
+            with self.subTest(selection=selection):
+                fixture = self.fixture()
+                temporary = self.assembly.tempfile.TemporaryDirectory
+                close_owned = self.assembly._close_owned_fds
+                real_close = self.assembly.os.close
+                close_calls = 0
+                attempted = []
+                target = None
+                class Capture:
+                    def __init__(self, *args, **kwargs):
+                        self.inner = temporary(*args, **kwargs)
+                    def __enter__(self):
+                        return self.inner.__enter__()
+                    def __exit__(self, *args):
+                        result = self.inner.__exit__(*args)
+                        if selection == "capture":
+                            raise OSError("synthetic-private-capture-cleanup")
+                        return result
+                def inspect_close(descriptors):
+                    nonlocal close_calls, target
+                    close_calls += 1
+                    descriptors = list(descriptors)
+                    inject = close_calls == (1 if selection == "source" else 2)
+                    if selection == "capture" or not inject:
+                        return close_owned(descriptors)
+                    target = descriptors[0]
+                    def close(fd):
+                        attempted.append(fd)
+                        real_close(fd)
+                        if fd == target:
+                            raise OSError("synthetic-private-descriptor-cleanup")
+                    with patch.object(self.assembly.os, "close", side_effect=close):
+                        outcome = close_owned(descriptors)
+                    self.assertEqual(attempted, list(dict.fromkeys(descriptors)))
+                    return outcome
+                with (
+                    patch.object(self.assembly.tempfile, "TemporaryDirectory", Capture),
+                    patch.object(self.assembly, "_close_owned_fds", side_effect=inspect_close),
+                ):
+                    result = self.assemble(fixture)
+                self.assertEqual((result.exit_code, result.code), (2, "ASSEMBLY_UNAVAILABLE"))
+                self.assertNotIn("synthetic-private", json.dumps(result.diagnostics()))
+                container = next((fixture.path / "build").iterdir())
+                self.assertEqual({path.name for path in container.iterdir()}, {".owner", "staging"})
+                if target is not None:
+                    self.assertEqual(attempted.count(target), 1)
+
+    def test_postrename_close_failure_preserves_verified_finalized_warning(self):
+        fixture = self.fixture()
+        close_owned = self.assembly._close_owned_fds
+        real_close = self.assembly.os.close
+        close_calls = 0
+        attempted = []
+        def inspect_close(descriptors):
+            nonlocal close_calls
+            close_calls += 1
+            descriptors = list(descriptors)
+            if close_calls != 3:
+                return close_owned(descriptors)
+            self.assertEqual(len(descriptors), 1)
+            def close(fd):
+                attempted.append(fd)
+                real_close(fd)
+                raise OSError("synthetic-private-postrename-cleanup")
+            with patch.object(self.assembly.os, "close", side_effect=close):
+                return close_owned(descriptors)
+        with patch.object(self.assembly, "_close_owned_fds", side_effect=inspect_close):
+            result = self.assemble(fixture)
+        self.assertEqual(close_calls, 3)
+        self.assertEqual(len(attempted), 1)
+        self.assertEqual((result.exit_code, result.code), (0, "CANDIDATE_FINALIZED_CLEANUP_WARNING"))
+        self.assertEqual(result.source_revision, fixture.head)
+        self.assertEqual(result.tree_oid, fixture.tree)
+        self.assertNotIn("synthetic-private", json.dumps(result.diagnostics()))
+        bundle = fixture.path / "build" / result.bundle_name
+        self.assertFalse((bundle.parent / "staging").exists())
+        checked = verify_release(str(bundle), expected_digest=result.table_sha256,
+                                  expected_format="project-manifest-release-1")
+        self.assertEqual(checked.exit_code, 0)
+
+    def test_ignore_projection_classifies_ignored_directories_and_unignored_control(self):
+        fixture = self.fixture()
+        process = self.assembly.acquisition.bounded_process
+        queries = []
+        def inspect(argv, **kwargs):
+            observed = process(argv, **kwargs)
+            if "check-ignore" in argv:
+                queries.append((argv, kwargs["data"], observed))
+            return observed
+        with patch.object(self.assembly.acquisition, "bounded_process", side_effect=inspect):
+            self.bundle(fixture, self.assemble(fixture))
+            (fixture.path / "synthetic-unignored").write_bytes(b"Synthetic unignored control\n")
+            rejected = self.assemble(fixture)
+        self.assertEqual((rejected.exit_code, rejected.code), (1, "SOURCE_UNTRACKED"))
+        for name in (b"build/\0", b"dist/\0"):
+            matches = [observed for _, raw, observed in queries if raw == name]
+            self.assertTrue(matches)
+            self.assertTrue(all(observed == (0, name, b"") for observed in matches))
+        negatives = [observed for _, raw, observed in queries if raw == b"synthetic-unignored\0"]
+        self.assertEqual(negatives, [(1, b"", b"")])
+        for argv, _, _ in queries:
+            self.assertLess(argv.index("--literal-pathspecs"), argv.index("--no-literal-pathspecs"))
+            projection = argv[argv.index("-C") + 1]
+            self.assertIn("--work-tree=" + projection, argv)
+
+    def test_output_directory_replacement_during_second_source_check_is_refused(self):
+        for selection in ("parent", "container", "staging"):
+            with self.subTest(selection=selection):
+                fixture = self.fixture()
+                literal = self.assembly._literal_clean
+                calls = 0
+                displaced = fixture.root / "synthetic-displaced-output"
+                def inspect(*args):
+                    nonlocal calls
+                    literal(*args)
+                    calls += 1
+                    if calls == 2:
+                        parent = fixture.path / "build"
+                        container = next(parent.iterdir())
+                        target = {"parent": parent, "container": container,
+                                  "staging": container / "staging"}[selection]
+                        mode = target.stat().st_mode & 0o777
+                        target.rename(displaced)
+                        target.mkdir(mode=mode)
+                recheck = self.assembly.acquisition.FrozenStore.recheck
+                refusals = []
+                def inspect_recheck(store):
+                    try:
+                        return recheck(store)
+                    except self.assembly.acquisition.AcquisitionFailure as error:
+                        refusals.append(error.reason)
+                        raise
+                with (
+                    patch.object(self.assembly, "_literal_clean", side_effect=inspect),
+                    patch.object(self.assembly.acquisition.FrozenStore, "recheck", new=inspect_recheck),
+                ):
+                    result = self.assemble(fixture)
+                expected = (2, "ASSEMBLY_UNAVAILABLE") if selection == "parent" else (1, "OUTPUT_CHANGED")
+                self.assertEqual((result.exit_code, result.code), expected)
+                self.assertEqual(refusals, ["observation_changed"] if selection == "parent" else [])
+                self.assertTrue(displaced.is_dir())
+                self.assertFalse(any(path.name == "bundle" for path in displaced.rglob("*")))
+
+    def test_staged_payload_mutation_during_second_source_check_is_refused(self):
+        fixture = self.fixture()
+        literal = self.assembly._literal_clean
+        calls = 0
+        staged = None
+        def inspect(*args):
+            nonlocal calls, staged
+            literal(*args)
+            calls += 1
+            if calls == 2:
+                container = next((fixture.path / "build").iterdir())
+                staged = container / "staging"
+                (staged / PAYLOAD_FILES[0]).write_bytes(b"Synthetic staged bytes changed after verification\n")
+        with patch.object(self.assembly, "_literal_clean", side_effect=inspect):
+            result = self.assemble(fixture)
+        self.assertEqual((result.exit_code, result.code), (1, "ASSEMBLY_VERIFY"))
+        self.assertEqual(calls, 2)
+        self.assertIsNotNone(staged)
+        self.assertTrue(staged.is_dir())
+        self.assertFalse((staged.parent / "bundle").exists())
+
+    def test_literal_commit_reproducibility_both_oid_widths_and_shared_encoder(self):
+        for algorithm in ("sha1", "sha256"):
+            with self.subTest(algorithm=algorithm):
+                fixture = self.fixture(object_format=algorithm)
+                before = (fixture.git_dir / "index").read_bytes()
+                first, second = self.assemble(fixture), self.assemble(fixture, parent="dist")
+                a, b = self.bundle(fixture, first), self.bundle(fixture, second, "dist")
+                self.assertEqual((a / "release.json").read_bytes(), (b / "release.json").read_bytes())
+                self.assertEqual(first.table_sha256, second.table_sha256)
+                table = json.loads((a / "release.json").read_bytes())
+                self.assertEqual(table["source_revision"], fixture.head)
+                self.assertEqual(tuple(row["path"] for row in table["files"]), PAYLOAD_FILES)
+                self.assertEqual((a / "release.json").read_bytes(), canonical(table))
+                self.assertEqual(self.assembly.binding.canonical_table_bytes(table), canonical(table))
+                for name in PAYLOAD_FILES:
+                    self.assertEqual((a / name).read_bytes(), fixture.files[name].data)
+                checked = verify_release(str(a), expected_digest=first.table_sha256,
+                                          expected_format="project-manifest-release-1")
+                self.assertEqual(checked.exit_code, 0)
+                self.assertEqual((fixture.git_dir / "index").read_bytes(), before)
+
+    def test_dirty_index_worktree_untracked_and_revision_never_create_output(self):
+        from acquisition_fixtures import FileSpec
+        for condition in ("worktree", "index", "untracked", "revision"):
+            with self.subTest(condition=condition):
+                fixture = self.fixture()
+                revision = fixture.head
+                if condition == "worktree":
+                    (fixture.path / PAYLOAD_FILES[0]).write_bytes(b"Synthetic dirty bytes\n")
+                elif condition == "index":
+                    entries = dict(fixture.files)
+                    entries[PAYLOAD_FILES[0]] = FileSpec("100644", b"Synthetic staged bytes\n")
+                    fixture.set_index(entries)
+                elif condition == "untracked":
+                    (fixture.path / "synthetic-extra").write_bytes(b"Synthetic extra\n")
+                else:
+                    revision = "0" * len(fixture.head)
+                result = self.assemble(fixture, revision=revision)
+                self.assertNotEqual(result.exit_code, 0)
+                self.assertEqual(list((fixture.path / "build").iterdir()), [])
+
+    def test_source_symlink_and_output_scope_are_refused_without_outside_reads(self):
+        from acquisition_fixtures import FileSpec
+        fixture = self.fixture(changed={PAYLOAD_FILES[0]: FileSpec("120000", b"synthetic-outside")})
+        result = self.assemble(fixture)
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertEqual(list((fixture.path / "build").iterdir()), [])
+        fixture = self.fixture()
+        outside = self.owner.create_root()
+        marker = outside / "untouched"
+        marker.write_bytes(b"Synthetic outsider\n")
+        result = self.assembly.assemble_candidate(str(fixture.path), expected_revision=fixture.head,
+                                                  output_parent=str(outside))
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertEqual(marker.read_bytes(), b"Synthetic outsider\n")
+        self.assertEqual(set(p.name for p in outside.iterdir()), {"fixture-owner", "untouched"})
+
+    def test_failure_and_collision_preserve_private_partial_output_without_completed_bundle(self):
+        fixture = self.fixture()
+        original = self.assembly._write_new
+        calls = []
+        def fail_write(fd, parts, data):
+            calls.append(parts)
+            if parts[-1] == "release.json":
+                raise OSError("synthetic-private-write-error")
+            return original(fd, parts, data)
+        with patch.object(self.assembly, "_write_new", side_effect=fail_write):
+            result = self.assemble(fixture)
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertNotIn("synthetic-private", json.dumps(result.diagnostics()))
+        containers = list((fixture.path / "build").iterdir())
+        self.assertEqual(len(containers), 1)
+        self.assertFalse((containers[0] / "bundle").exists())
+        self.assertTrue((containers[0] / ".owner").is_file())
+        fixture = self.fixture()
+        finalize = self.assembly._finalize_noreplace
+        def collide(fd):
+            os.mkdir("bundle", dir_fd=fd)
+            file_fd = os.open("bundle/untouched", os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+                              0o600, dir_fd=fd)
+            with os.fdopen(file_fd, "wb") as stream:
+                stream.write(b"Synthetic collision\n")
+            return finalize(fd)
+        with patch.object(self.assembly, "_finalize_noreplace", side_effect=collide):
+            result = self.assemble(fixture)
+        self.assertNotEqual(result.exit_code, 0)
+        container = next((fixture.path / "build").iterdir())
+        self.assertEqual((container / "bundle/untouched").read_bytes(), b"Synthetic collision\n")
+        self.assertTrue((container / "staging").exists())
+
+    def test_source_mutation_and_verification_failure_never_finalize(self):
+        for condition in ("source", "verification"):
+            with self.subTest(condition=condition):
+                fixture = self.fixture()
+                original = self.assembly.binding.verify_release
+                def inspect(*args, **kwargs):
+                    result = original(*args, **kwargs)
+                    if condition == "source":
+                        (fixture.path / PAYLOAD_FILES[0]).write_bytes(b"Synthetic changed after capture\n")
+                    else:
+                        return self.assembly.binding.VerificationResult(1, ("PAYLOAD_DIGEST",))
+                    return result
+                with patch.object(self.assembly.binding, "verify_release", side_effect=inspect):
+                    result = self.assemble(fixture)
+                self.assertNotEqual(result.exit_code, 0)
+                container = next((fixture.path / "build").iterdir())
+                self.assertFalse((container / "bundle").exists())
+
+    def test_contained_git_has_no_source_filters_hooks_fsmonitor_or_export_subst(self):
+        from acquisition_fixtures import FileSpec
+        fixture = self.fixture(changed={
+            ".gitattributes": FileSpec("100644", b"* filter=synthetic export-subst\n"),
+            PAYLOAD_FILES[0]: FileSpec("100644", b"Synthetic $Format:%H$ literal\n"),
+        })
+        marker = fixture.root / "should-not-exist"
+        self.assertRegex(str(marker), r"\A/[A-Za-z0-9_./-]+\Z")
+        command = 'touch ' + str(marker)
+        with (fixture.git_dir / "config").open("a") as stream:
+            stream.write("\n[filter \"synthetic\"]\n clean = " + command
+                         + "\n smudge = " + command + "\n[core]\n fsmonitor = " + command + "\n")
+        (fixture.git_dir / "hooks").mkdir()
+        (fixture.git_dir / "hooks/pre-commit").write_text("#!/bin/sh\n" + command + "\n")
+        (fixture.git_dir / "hooks/pre-commit").chmod(0o755)
+        result = self.assemble(fixture)
+        bundle = self.bundle(fixture, result)
+        self.assertEqual((bundle / PAYLOAD_FILES[0]).read_bytes(), b"Synthetic $Format:%H$ literal\n")
+        self.assertFalse(marker.exists())
+
+    def test_fixture_and_assembler_do_not_follow_inherited_git_context(self):
+        from acquisition_fixtures import FileSpec, GitFixture
+        other = self.fixture()
+        before = (other.git_dir / "index").read_bytes(), (other.git_dir / "config").read_bytes()
+        overrides = {"GIT_DIR": str(other.git_dir), "GIT_WORK_TREE": str(other.path),
+                     "GIT_INDEX_FILE": str(other.git_dir / "index"), "GIT_CONFIG_COUNT": "1",
+                     "GIT_CONFIG_KEY_0": "core.bare", "GIT_CONFIG_VALUE_0": "true"}
+        with patch.dict(os.environ, overrides):
+            fixture = self.fixture()
+            result = self.assemble(fixture)
+        self.assertEqual(result.exit_code, 2)
+        self.assertEqual(result.code, "INHERITED_GIT_CONTEXT")
+        self.assertEqual((other.git_dir / "index").read_bytes(), before[0])
+        self.assertEqual((other.git_dir / "config").read_bytes(), before[1])
+        self.assertEqual(list((fixture.path / "build").iterdir()), [])
+
+    def test_completed_payload_tamper_is_rejected_by_existing_verifier(self):
+        fixture = self.fixture()
+        result = self.assemble(fixture)
+        bundle = self.bundle(fixture, result)
+        (bundle / PAYLOAD_FILES[0]).write_bytes(b"Synthetic payload tamper\n")
+        checked = verify_release(str(bundle), expected_digest=result.table_sha256,
+                                  expected_format="project-manifest-release-1")
+        self.assertEqual(checked.exit_code, 1)
+
+
+
 
 if __name__ == "__main__":
     unittest.main()
