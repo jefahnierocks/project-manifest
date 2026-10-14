@@ -403,6 +403,29 @@ class DeclarationTests(unittest.TestCase):
                 stack.enter_context(patch(target, side_effect=AssertionError("Pure API performed I/O")))
             self.accepted()
 
+    def test_distinct_list_order_is_preserved_with_stack_engine_independent_of_order(self):
+        cases = (
+            (b"peers: []\n", b"peers: ", ("sample-two", "sample-one"), ("peers",)),
+            (b"  platforms: []\n", b"  platforms: ", ("linux-x86_64", "macos-arm64"), ("development", "platforms")),
+            (b"  host_requirements: []\n", b"  host_requirements: ", ("android_sdk", "container_engine"), ("development", "host_requirements")),
+        )
+        for old, prefix, values, path in cases:
+            for order in (values, tuple(reversed(values))):
+                with self.subTest(field=path, order=order):
+                    data = changed(old, prefix + ("[" + ", ".join(order) + "]\n").encode(), DATA)
+                    result = self.accepted(data)
+                    value = result.record
+                    for part in path:
+                        value = value[part]
+                    self.assertEqual(value, list(order))
+                    if path == ("development", "host_requirements"):
+                        # A stack's engine implication must not sort or reduce the list.
+                        stack = STACK.replace(b"instance_scope: sample-scope", b"instance_scope: checkout").replace(
+                            b"port_policy: sample-policy", b"port_policy: loopback_only")
+                        result = self.accepted(changed(b"  stacks: {}\n", stack, data), tree=STACK_TREE)
+                        self.assertEqual(result.record["development"]["host_requirements"], list(order))
+
+
 
 if __name__ == "__main__":
     unittest.main()

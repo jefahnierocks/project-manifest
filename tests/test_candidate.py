@@ -475,5 +475,258 @@ class CandidateTests(unittest.TestCase):
                 self.assertFalse(result.syntax_shape_accepted)
 
 
+class LoaderComparisonTests(unittest.TestCase):
+    """Stdlib injected preparation controls, never actual optional engines."""
+
+    def setUp(self):
+        import compare_loaders
+        self.comparison = compare_loaders
+
+    def selection(self):
+        # These versions/executable are synthetic controls, not a release profile.
+        return {"python": "1.2.3", "profiles": [
+            {"id": "safe", "engine": "PyYAML.SafeLoader", "versions": {"pyyaml": "1.2.3", "libyaml": None}},
+            {"id": "compiled", "engine": "PyYAML.CSafeLoader", "versions": {"pyyaml": "1.2.3", "libyaml": [0, 1, 2]}},
+            {"id": "psych", "engine": "Ruby.Psych", "executable": "/synthetic/prepared/ruby",
+             "versions": {"ruby": "1.2.3", "psych": "4.5.6", "libyaml": [0, 1, 2]}},
+        ]}
+
+    def run_injected(self, initializer, **kwargs):
+        from unittest.mock import patch
+        with patch.object(self.comparison, "discover", side_effect=AssertionError("Selected discovery ran")), \
+             patch.object(self.comparison.importlib, "import_module", side_effect=AssertionError("Optional module imported")), \
+             patch.object(self.comparison.subprocess, "run", side_effect=AssertionError("Optional runtime executed")):
+            return self.comparison.compare(initializer=initializer, python_version="1.2.3", **kwargs)
+
+    def test_selected_requires_every_engine_and_every_accepted_vector_without_discovery(self):
+        selected = self.selection()
+        initialized, loaded = [], []
+        def initialize(profile):
+            initialized.append(profile["id"])
+            def load(data):
+                loaded.append(profile["id"])
+                return check_candidate(data).record
+            return profile["versions"], load
+        report = self.run_injected(initialize, selection=selected)
+        accepted, refused = self.comparison.vectors()
+        self.assertEqual(report["exit_code"], 0)
+        self.assertEqual(report["selected_comparison"], "passed")
+        self.assertEqual(report["release_qualification"], "not_checked")
+        self.assertEqual(initialized, ["safe", "compiled", "psych"])
+        self.assertEqual(len(loaded), len(initialized) * (len(accepted) + len(refused)))
+        for engine in report["loaders"]:
+            self.assertEqual(engine["agreements"], list(accepted))
+            self.assertEqual(engine["differences"], [])
+            # General acceptance of strict-refused input is informational.
+            self.assertEqual(engine["broader_yaml_acceptance"], list(refused))
+        self.assertEqual(len(report["requirements"]), 3)
+        self.assertTrue(all(item["code"] == "SATISFIED" for item in report["requirements"]))
+
+    def test_missing_version_and_initialization_failures_never_reduce_selected_set(self):
+        for condition, expected in (("missing", "ENGINE_MISSING"), ("version", "VERSION_MISMATCH"),
+                                    ("initialization", "ENGINE_INIT_FAILED")):
+            with self.subTest(condition=condition):
+                loaded = []
+                def initialize(profile):
+                    if profile["id"] == "compiled":
+                        if condition == "missing":
+                            raise self.comparison.Unavailable("ENGINE_MISSING")
+                        if condition == "initialization":
+                            raise RuntimeError("synthetic-raw-error-never-reported")
+                        version = dict(profile["versions"], pyyaml="9.9.9")
+                    else:
+                        version = profile["versions"]
+                    return version, lambda data: loaded.append(data)
+                report = self.run_injected(initialize, selection=self.selection())
+                self.assertEqual(report["exit_code"], 2)
+                self.assertEqual(report["selected_comparison"], "not_checked")
+                self.assertEqual(len(report["requirements"]), 3)
+                self.assertEqual(report["requirements"][1]["code"], expected)
+                self.assertEqual(loaded, [])
+                self.assertNotIn("synthetic-raw-error", json.dumps(report))
+
+    def test_python_context_mismatch_stops_before_initialization(self):
+        def initialize(profile):
+            raise AssertionError("Unqualified interpreter initialized an engine")
+        selected = self.selection()
+        selected["python"] = "9.9.9"
+        report = self.run_injected(initialize, selection=selected)
+        self.assertEqual(report["exit_code"], 2)
+        self.assertEqual(report["reason"], "PYTHON_VERSION_MISMATCH")
+
+    def test_unknown_duplicate_or_unqualified_profile_is_refused_before_engine_activity(self):
+        cases = []
+        for change in ({"engine": "Synthetic.Other"}, {"engine": []}, {"versions": {"pyyaml": "latest", "libyaml": None}}):
+            value = self.selection()
+            value["profiles"][0].update(change)
+            cases.append(value)
+        duplicate = self.selection()
+        duplicate["profiles"][1]["id"] = "safe"
+        cases.append(duplicate)
+        relative = self.selection()
+        relative["profiles"][2]["executable"] = "relative/ruby"
+        cases.append(relative)
+        extra = self.selection()
+        extra["profiles"][0]["fallback"] = True
+        cases.append(extra)
+        cases.extend(({"python": "1.2.3", "profiles": []}, None))
+        for index, value in enumerate(cases):
+            with self.subTest(case=index):
+                if value is None:
+                    self.assertFalse(self.comparison.selection_valid(value))
+                    continue
+                report = self.run_injected(lambda profile: self.fail("Unqualified profile initialized"), selection=value)
+                self.assertEqual(report["exit_code"], 2)
+                self.assertEqual(report["reason"], "SELECTION_INPUT")
+
+    def test_accepted_record_disagreement_and_strict_control_failure_are_exit_one(self):
+        selected = self.selection()
+        report = self.run_injected(lambda profile: (profile["versions"], lambda data: {}), selection=selected)
+        self.assertEqual(report["exit_code"], 1)
+        self.assertEqual(report["selected_comparison"], "failed")
+        def initialize(profile):
+            self.fail("Strict control failure initialized optional engine")
+        report = self.run_injected(initialize, selection=selected, supplied_vectors=({"bad": b"not-a-manifest\n"}, {}))
+        self.assertEqual(report["exit_code"], 1)
+        self.assertEqual(report["reason"], "STRICT_CONTROL_FAILED")
+
+    def test_post_initialization_loss_is_unavailable_in_both_vector_loops_without_fallback(self):
+        import subprocess
+        accepted, refused = self.comparison.vectors()
+        sample = {"base": accepted["base"]}
+        exclusion = {"reserved_token": refused["reserved_token"]}
+        for phase in ("accepted", "strict_refusal"):
+            for failure in ("os", "timeout", "unavailable"):
+                for earlier_mismatch in (False, True):
+                    with self.subTest(phase=phase, failure=failure, earlier_mismatch=earlier_mismatch):
+                        initialized, loaded = [], []
+                        def initialize(profile):
+                            initialized.append(profile["id"])
+                            def load(data):
+                                loaded.append(profile["id"])
+                                if profile["id"] == "psych":
+                                    self.fail("Lost selected loader was skipped or retried through another profile")
+                                is_refused = data == exclusion["reserved_token"]
+                                if profile["id"] == "compiled" and is_refused == (phase == "strict_refusal"):
+                                    if failure == "os":
+                                        raise OSError("synthetic-raw-operational-error")
+                                    if failure == "timeout":
+                                        raise subprocess.TimeoutExpired("synthetic-raw-command", 5,
+                                                                          output=b"synthetic-raw-output")
+                                    raise self.comparison.Unavailable("synthetic-raw-operational-error")
+                                if is_refused:
+                                    raise ValueError("synthetic-parser-refusal")
+                                return {} if earlier_mismatch and profile["id"] == "safe" else check_candidate(data).record
+                            return profile["versions"], load
+                        report = self.run_injected(initialize, selection=self.selection(),
+                                                   supplied_vectors=(sample, exclusion))
+                        self.assertEqual(report["exit_code"], 2)
+                        self.assertEqual(report["reason"], "LOADER_EXECUTION_UNAVAILABLE")
+                        self.assertEqual(report["selected_comparison"], "not_checked")
+                        self.assertEqual(report["release_qualification"], "not_checked")
+                        self.assertEqual(initialized, ["safe", "compiled", "psych"])
+                        self.assertEqual(report["unavailable"], ["compiled"])
+                        self.assertNotIn("psych", loaded)
+                        self.assertEqual(report["loaders"][-1]["phase"], phase)
+                        self.assertEqual(report["loaders"][-1]["execution"], "unavailable")
+                        self.assertEqual(report["loaders"][0]["differences"], ["base"] if earlier_mismatch else [])
+                        self.assertNotIn("synthetic-raw", json.dumps(report))
+
+    def test_parser_refusal_of_accepted_input_is_mismatch_and_strict_refusal_is_informational(self):
+        accepted, refused = self.comparison.vectors()
+        sample = {"base": accepted["base"]}
+        exclusion = {"reserved_token": refused["reserved_token"]}
+        for refuse_accepted in (False, True):
+            def initialize(profile):
+                def load(data):
+                    if refuse_accepted or data == exclusion["reserved_token"]:
+                        raise ValueError("synthetic-parser-refusal")
+                    return check_candidate(data).record
+                return profile["versions"], load
+            report = self.run_injected(initialize, selection=self.selection(),
+                                       supplied_vectors=(sample, exclusion))
+            self.assertEqual(report["exit_code"], 1 if refuse_accepted else 0)
+            self.assertEqual(report["selected_comparison"], "failed" if refuse_accepted else "passed")
+            self.assertEqual(report["unavailable"], [])
+            self.assertEqual(report["loaders"][0]["differences"], ["base"] if refuse_accepted else [])
+
+    def test_ruby_parser_refusal_is_distinct_from_process_loss_or_malformed_output(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        cases = ((65, b"", ValueError), (1, b"", self.comparison.Unavailable),
+                 (-9, b"", self.comparison.Unavailable), (0, b"invalid-output", self.comparison.Unavailable))
+        for code, output, error in cases:
+            with self.subTest(code=code), patch.object(self.comparison.subprocess, "run",
+                    return_value=SimpleNamespace(returncode=code, stdout=output,
+                                                 stderr=b"synthetic-raw-ruby-error")):
+                with self.assertRaises(error) as raised:
+                    self.comparison.ruby_loader("/synthetic/prepared/ruby", BASE)
+                self.assertNotIn("synthetic-raw", str(raised.exception))
+        with patch.object(self.comparison.subprocess, "run",
+                          return_value=SimpleNamespace(returncode=0, stdout=b'{"sample":1}', stderr=b"")):
+            self.assertEqual(self.comparison.ruby_loader("/synthetic/prepared/ruby", BASE), {"sample": 1})
+
+    def test_reconnaissance_remains_incomplete_and_does_not_adopt_a_release_profile(self):
+        report = self.comparison.compare(discovery=lambda: (
+            [("synthetic-one", {"pyyaml": "1.2.3", "libyaml": None}, lambda data: check_candidate(data).record)],
+            ["PyYAML.CSafeLoader", "Ruby.Psych"]))
+        self.assertEqual(report["exit_code"], 0)
+        self.assertEqual(report["selected_comparison"], "not_checked")
+        self.assertEqual(report["release_qualification"], "not_checked")
+        self.assertEqual(report["unavailable"], ["PyYAML.CSafeLoader", "Ruby.Psych"])
+
+    def test_linked_libyaml_version_is_observed_from_extension_not_boolean(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        yaml = SimpleNamespace(__version__="1.2.3", __with_libyaml__=True, CSafeLoader=object())
+        extension = SimpleNamespace(get_version=lambda: (0, 1, 2))
+        names = []
+        def imported(name):
+            names.append(name)
+            return {"yaml": yaml, "yaml._yaml": extension}[name]
+        with patch.object(self.comparison.importlib, "import_module", side_effect=imported):
+            versions, load = self.comparison.initialize({"engine": "PyYAML.CSafeLoader"})
+        self.assertEqual(versions, {"pyyaml": "1.2.3", "libyaml": [0, 1, 2]})
+        self.assertTrue(callable(load))
+        self.assertEqual(names, ["yaml", "yaml._yaml"])
+
+    def test_explicit_invalid_selected_cli_input_never_falls_back_to_reconnaissance(self):
+        from unittest.mock import patch
+        for argv in (["--selected-profiles", ""], ["--selected-profiles"], ["--unknown"]):
+            with self.subTest(argv=argv), \
+                 patch.object(self.comparison, "discover", side_effect=AssertionError("CLI selection fell back")), \
+                 patch.object(self.comparison, "initialize", side_effect=AssertionError("CLI selection initialized")):
+                output = io.StringIO()
+                with contextlib.redirect_stdout(output):
+                    code = self.comparison.main(argv)
+                report = json.loads(output.getvalue())
+                self.assertEqual(code, 2)
+                self.assertEqual(report["reason"], "SELECTION_INPUT")
+                self.assertEqual(report["selected_comparison"], "not_checked")
+
+    def test_selected_representation_classes_have_explicit_strict_record_controls(self):
+        accepted, refused = self.comparison.vectors()
+        records = {label: self.comparison.check_candidate(data) for label, data in accepted.items()}
+        self.assertTrue(all(result.exit_code == 0 for result in records.values()))
+        self.assertTrue(all(self.comparison.check_candidate(data).exit_code == 1 for data in refused.values()))
+        self.assertEqual(records["singleton_list"].record["peers"], ["a"])
+        self.assertEqual(records["ordered_lists"].record["peers"], ["sample_two", "sample-one"])
+        self.assertEqual(records["duplicate_list"].record["peers"], ["sample-peer", "sample-peer"])
+        self.assertEqual(records["quoted_null_and_numeric"].record["presentation"]["public_alias"], "null")
+        self.assertEqual(records["quoted_null_and_numeric"].record["project"]["display_name"], "001")
+        self.assertIsNone(records["base"].record["presentation"]["public_alias"])
+        self.assertEqual(records["quoted_punctuation"].record["project"]["display_name"], "# literal: [] {}")
+        self.assertEqual(records["reordered_keys"].record, records["base"].record)
+        self.assertEqual(records["interior_comments"].record, records["base"].record)
+        self.assertEqual(list(records["two_mixed_stack_keys"].record["development"]["stacks"]), ["first_stack-one", "second-stack_two"])
+        self.assertEqual(len(records["full_shape"].record["development"]["commands"]), 7)
+        self.assertEqual(len(records["token_limits"].record["project"]["id"]), 64)
+        self.assertEqual(len(next(iter(records["token_limits"].record["development"]["stacks"]))), 64)
+        self.assertEqual(len(records["text_and_path_limits"].record["status"]["local_phase"]), 400)
+        self.assertEqual(len(records["text_and_path_limits"].record["authority"]["status_of_record"]), 255)
+        self.assertEqual(len(accepted["file_limit"]), 65_536)
+        self.assertEqual(len(accepted["line_limit"].splitlines()[-1]), 2_048)
+
+
 if __name__ == "__main__":
     unittest.main()
