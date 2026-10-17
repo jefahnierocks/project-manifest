@@ -1,6 +1,7 @@
 # project-manifest
 
-An unreleased project-manifest specification candidate and reference source.
+A project-manifest specification candidate and reference source with an
+owner-approved [first private release](https://github.com/jefahnierocks/project-manifest/releases/tag/release-1).
 The canonical repository is `jefahnierocks/project-manifest`. The repository
 owner is the sole release approver.
 
@@ -9,7 +10,9 @@ are pure stdlib APIs with synthetic in-memory tests. Bounded offline Git
 acquisition returns one explicit source observation through an API and source
 CLI. A separately trusted consumer bootstrap provides
 [candidate offline byte binding](docs/offline-binding-candidate.md) before
-payload import. Complete Specification 1 validity remains not checked. Read the [acquisition candidate](docs/acquisition-candidate.md),
+payload import. Project declaration verdicts require reviewed consumer composition
+of syntax/shape, declaration semantics and authenticated selected-tree evidence.
+Read the [acquisition candidate](docs/acquisition-candidate.md),
 [declaration candidate](docs/validation-candidate.md),
 [specification candidate](docs/specification-candidate.md),
 [field worksheet](docs/field-table.md), [enum worksheet](docs/enum-provenance.md)
@@ -49,14 +52,15 @@ If a tool is missing, report it and leave setup to the owner. Retain and report
 inherited host-tool warnings; do not broaden the lock or change host
 configuration to silence them.
 
-The exact tools are Python 3.13.16 and Gitleaks 8.30.1. The reader, verifier and reference corpus
-use the standard library; no dependency is added. A separate qualification harness
-compares installed optional YAML loaders without installing them. The generated
-bootstrap lock covers macOS arm64 and Linux x64. The hosted Linux-x86_64
-source-qualification candidate prepares exact tools in owned temporary storage,
-then checks the source corpus and actual floor. Source preparation is not a
-Linux execution receipt; other platforms and the release minimum remain
-unqualified. The existing macOS source evidence is preserved.
+The exact tools are Python 3.13.16 and Gitleaks 8.30.1. The reader, verifier and
+reference corpus use the standard library; no dependency is added. A separate
+qualification harness compares installed optional YAML loaders without installing
+them. The generated bootstrap lock covers macOS arm64 and Linux x64. The hosted
+Linux-x86_64 job prepares exact tools in owned temporary storage, then checks the
+source corpus and actual Python floor. Executed evidence for the released source
+covers Darwin arm64/current Python 3.13.16 and Linux x86_64/current 3.13.16/floor
+3.11.17; see [release status and limits](STATUS.md#private-release-1). Other hosts,
+loaders and project runtime acceptance remain separate.
 
 The gate checks a closed source set, governance, real tool/lock
 agreement, all Python syntax, local Markdown links, text hygiene, private-path
@@ -90,19 +94,21 @@ tree evidence is caller-supplied. The separate acquirer obtains bounded
 revision, index or tracked working evidence and returns that same TreeSnapshot
 with accepted Python results. The five manifest enum sets are owner-adopted
 and checked; the [development contract policy](docs/validation-candidate.md#proposed-development-policy-freeze)
-was frozen by the owner on 2026-10-13. Complete release approval remains separate. Activation owner uses none/direnv/mise/project
+was frozen by the owner on 2026-10-13. [Private Release 1](STATUS.md#private-release-1)
+records the separate artifact acceptance. Activation owner uses none/direnv/mise/project
 independently from template/launcher presence. The separately trusted bootstrap
-checks a closed externally anchored byte-binding candidate before payload import. Fresh installed-loader
-comparisons are bounded evidence, not complete release qualification. Producer
-legacy dispatch, full release binding, native conformance, Linux/runtime and
-producer admission work remain ahead.
-Corpus success is not full conformance or release readiness.
+checks a closed externally anchored byte binding before payload import. Fresh
+installed-loader comparisons remain bounded evidence. Actual consumer binding,
+declaration validation, native project conformance, pilots and runtime acceptance
+have their own gates. Corpus success alone does not establish those outcomes.
 
-Keep document vectors inline. No discoverable root v1 manifest may appear under
-harvested roots or this origin until lock-only producer admission has landed.
-Synthetic acquisition graphs are an owner-authorized exception solely in guarded
-system temporary roots outside harvested roots. No producer discovery, enrollment, migration, runtime
-operation, release, vendoring or publication is performed here.
+Keep document vectors inline. No root v1 manifest is initialized in this origin.
+The producer's lock-only discovery barrier has landed in source and invocation
+wiring; released-validator adoption, version dispatch and operational acceptance
+remain separate. Synthetic acquisition graphs are an owner-authorized exception
+solely in guarded system temporary roots outside harvested roots. The private release does not
+authorize producer discovery, enrollment, migration, runtime operation, vendoring
+or public visibility.
 
 ## Tool maintenance and local output
 
