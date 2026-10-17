@@ -7,3 +7,11 @@ gitleaks = "8.30.1"
 [settings]
 lockfile = true
 lockfile_platforms = ["macos-arm64", "linux-x64"]
+auto_install = false
+exec_auto_install = false
+task.run_auto_install = false
+
+[tasks.check]
+description = "Validate source, complete index and released origin declaration"
+run = "python -I -S -B scripts/validate.py"
+env = { MISE_EXEC_AUTO_INSTALL = "0" }

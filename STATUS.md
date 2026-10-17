@@ -1,8 +1,8 @@
 # Status
 
 Governed intake baseline 0.1 with an MIT license. The specification candidate and
-reference source have an owner-approved first private release. The repository
-owner remains the sole release approver.
+reference source have an owner-approved first release, initially private and now
+public. The repository owner remains the sole release approver.
 
 ## Private release 1
 
@@ -25,6 +25,37 @@ Consumer binding and adoption follow their separate gates, using the existing
 [released descriptor profile](docs/offline-binding-candidate.md#released-source-descriptor-profile)
 and [bootstrap trust and immutable-use requirements](docs/offline-binding-candidate.md#trusted-consumer-bootstrap).
 Verification alone grants no project execution, admission or runtime authority.
+
+## Public distribution
+
+The owner authorized public visibility on 2026-10-17 UTC after publication
+review. Unauthenticated readback confirmed the public repository and accepted
+main 9797b48786f6da0e4e5167a25c2a873e6945269c with unchanged release/tag identity.
+All four public downloads (archive, separate bootstrap, provenance and checksums)
+matched the accepted exact bytes, sizes and SHA-256 hashes. The released source,
+closed table/domain digest and bootstrap digest above are unchanged.
+Initial private publication remains historical provenance; public availability
+is separate from project adoption, execution and runtime admission.
+
+## Origin self-adoption candidate
+
+The owner authorized Specification 1 source adoption after the producer's
+lock-only admission barrier landed. This candidate adds `project.yaml`, one
+native mise `check` task and independent released-contract checks inside the
+existing source gate. It vendors the retained public Release 1 assets exactly;
+the bootstrap is separate from the closed payload. Current mutable validator
+source is tested independently and cannot certify its own declaration.
+
+Local Darwin arm64 source qualification passed on 2026-10-17 UTC with the pinned
+Python 3.13.16 and Gitleaks 8.30.1: 208 tests passed for each complete worktree
+and index snapshot, followed by released declaration and native conformance
+checks. Hosted CI and final rollout acceptance remain pending. CI checks exact
+revision/index/worktree agreement and released observations; local uncommitted
+validation checks worktree/index only.
+No new release, tag, producer enrollment or runtime activation is performed.
+Child-repository baseline 0.1 remains active; baseline 0.2 awaits its separate
+rollout and activation gates. Native platform declarations retain the two hosts
+already selected by the source gate; Linux adoption execution evidence is pending.
 
 ## Source scope and remaining acceptance
 
@@ -63,13 +94,14 @@ release or establish a consumer lock. Actual native task/role/secretless-check/
 activation/Compose safety belongs to project/consumer acceptance; validation
 executes no project code.
 
-Private Release 1 supplies the released specification and reference validator.
+Release 1 supplies the released specification and reference validator.
 Release/download byte verification alone establishes no project declaration
 verdict; actual consumer binding, declaration validation, conformance and
 admission remain separate. The producer's lock-only discovery barrier has landed
 in source and invocation wiring; released-validator adoption, version dispatch
 and operational acceptance remain separate. Consumer migration, pilots and runtime
-acceptance have their own gates. No installed/vendor command or root manifest is
-initialized in this origin. Document vectors remain inline; synthetic Git fixtures
-use guarded owned temporary roots outside harvested roots. Public visibility
-remains a later owner-reviewed decision.
+acceptance have their own gates. This origin has the source adoption candidate
+above, using committed release bytes without an installed command. Document
+vectors remain inline; synthetic Git fixtures use guarded owned temporary roots
+outside harvested roots. Public visibility and anonymous release-byte readback
+are complete; project/consumer acceptance remains separate.

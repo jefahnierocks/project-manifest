@@ -1,6 +1,9 @@
 # AGENTS.md
 
 Adopts the Jefahnierocks child-repo baseline 0.1.
+Adopts Project Manifest Specification 1 using the independently pinned Release 1
+binding in `scripts/check-self-adoption.py`; rollout acceptance remains in
+[STATUS.md](STATUS.md).
 Tier: Governed. Status of record: [STATUS.md](STATUS.md).
 Canonical repository: `jefahnierocks/project-manifest`.
 Host contract: `system-config`, `docs/project-conventions.md`.
@@ -19,7 +22,7 @@ the sole release approver. This contract has no baseline exceptions.
   directories, removed on exit, without persistent reports or bytecode.
 
 ```sh
-MISE_EXEC_AUTO_INSTALL=0 mise exec python@3.13.16 gitleaks@8.30.1 -- python -B scripts/validate.py
+MISE_EXEC_AUTO_INSTALL=0 mise run check
 ```
 
 - `mise lock --platform macos-arm64,linux-x64`: regenerate this project's tool lock after
@@ -48,20 +51,27 @@ Linux lock; floor Python/Git are separate qualification pins. No maintained
 image, global install, provider/private input or privileged PR event is used.
 Keep candidate defaults and unapproved vocabulary explicit; success is never
 a complete v1 verdict. The same source gate checks the synthetic corpus.
-Before release 1, complete and pass the full reference corpus, including
+Before a successor release, complete and pass its full reference corpus, including
 declaration validity and conformance cases. Exact pins, the committed tool
-lock and fully redacted secret scan remain mandatory. Do not add a discoverable
-root v1 manifest under harvested roots or this origin until landed lock-only
-admission. Owner-authorized synthetic Git graphs use only ownership-marked
+lock and fully redacted secret scan remain mandatory. The producer lock-only
+admission barrier has landed. The owner-authorized
+root `project.yaml` declares this origin; discovery still grants no producer
+admission or runtime authority. Owner-authorized synthetic Git graphs use only
+ownership-marked
 /private/tmp/project-manifest-c3-* (macOS arm64) or /tmp/project-manifest-c3-*
 (Linux x86_64) roots outside harvested roots; raw synthetic
 objects and disposable indexes are permitted, never real history or source
 commits. Clean up only successful owned fixtures; preserve failed fixtures.
 The adapter must refuse unsupported storage, unbounded input, fetching and
-source execution. No producer operation, migration, installed/vendor command,
-release or publication is authorized.
+source execution. Routine source validation uses the committed Release 1 vendor
+snapshot and
+never installs a command, executes a producer operation, or creates a release.
+Further release or publication work requires its own owner instruction.
 Do not stage merely to create test coverage. The full gate requires the complete
-candidate index and checks worktree and index snapshots separately. Unstaged
+candidate index and checks worktree and index snapshots separately. CI also
+passes the exact checked-out commit through `--rev` and checks all three
+snapshots. The mutable source corpus and independently pinned released
+self-adoption checks are separate; neither approves a future release. Unstaged
 review may use focused source checks; it is not full-gate qualification.
 
 ## Owner-only actions
@@ -135,7 +145,7 @@ detect private material misfiled elsewhere, so content review remains
 required. If private or secret material appears in Git, stop and tell the
 owner; an exposed secret requires owner revocation or rotation.
 
-The repository starts private. Public visibility is the owner's decision.
-Before making it public, the owner reviews a mirror of all hosted refs,
-including paths, authors and messages, together with a secret scan. A secret
-finding blocks publication until the credential has been retired.
+The owner approved public visibility for Release 1. Future publication or
+visibility changes retain owner review of hosted refs, paths, authors, messages
+and a secret scan. A secret finding blocks publication until the credential
+has been retired.

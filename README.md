@@ -1,7 +1,7 @@
 # project-manifest
 
 A project-manifest specification candidate and reference source with an
-owner-approved [first private release](https://github.com/jefahnierocks/project-manifest/releases/tag/release-1).
+owner-approved [first release](https://github.com/jefahnierocks/project-manifest/releases/tag/release-1).
 The canonical repository is `jefahnierocks/project-manifest`. The repository
 owner is the sole release approver.
 
@@ -26,6 +26,9 @@ and [STATUS.md](STATUS.md). [AGENTS.md](AGENTS.md) is the working contract.
 - `tests/`: inline synthetic byte/semantic/tree positive, negative and boundary
   vectors and guarded temporary Git graphs outside harvested roots.
 - `scripts/validate.py`: the sole source gate, including the candidate corpus.
+- `project.yaml`: Specification 1 declaration of this origin.
+- `scripts/check-self-adoption.py`: independently pinned released-contract checks.
+- `vendor/project-manifest/`: unchanged Release 1 payload and separate bootstrap.
 - `mise.toml` and `mise.lock`: exact provisioned tools and generated lock.
 - `AGENTS.md`: canonical contract; `CLAUDE.md` imports it.
 - `STATUS.md`: status of record; `LICENSE`: MIT license.
@@ -45,7 +48,7 @@ Routine validation uses already provisioned tools and disables automatic
 installation for this process:
 
 ```sh
-MISE_EXEC_AUTO_INSTALL=0 mise exec python@3.13.16 gitleaks@8.30.1 -- python -B scripts/validate.py
+MISE_EXEC_AUTO_INSTALL=0 mise run check
 ```
 
 If a tool is missing, report it and leave setup to the owner. Retain and report
@@ -74,7 +77,26 @@ The corpus runs from temporary copies of the exact candidate source bytes.
 The index must contain the complete candidate source set. The gate checks
 worktree and index bytes and runs the corpus separately for each snapshot.
 Incomplete indexes are refused. The gate never stages files and rejects
-changes to observed source/index bytes during validation.
+changes to observed source/index bytes during validation. The native `check`
+task delegates to that gate; project settings disable automatic tool installation
+before task/tool resolution. The environment prefix above also keeps direct
+invocation explicit. Setup remains owner-only.
+
+Self-adoption uses the separately pinned Release 1 bootstrap and closed payload,
+not the evolving source under `src/`. The gate checks worktree and staged
+declarations against one explicit UTC reference day and their captured manifest
+digests. Native conformance requires the declared `check` task, no environment
+activation or secrets, and no stacks. CI additionally supplies `--rev` with the
+full checked-out commit; the gate requires revision/index/worktree agreement and
+checks that revision through the released protocol. A local uncommitted gate
+therefore establishes worktree/index evidence, not hosted or commit acceptance.
+
+The released byte snapshot is preserved with scoped Git attributes. Its bootstrap
+SHA-256 and release-table domain digest are independent constants in the trusted
+self-adoption entrypoint. Bootstrap bytes are hashed before execution; captured
+payload bytes are verified and runtime modules execute only from those retained
+bytes. Current source tests continue independently, so changing a proposed
+validator cannot change which released contract accepts the origin declaration.
 
 ## Candidate limits and next work
 
@@ -102,13 +124,14 @@ installed-loader comparisons remain bounded evidence. Actual consumer binding,
 declaration validation, native project conformance, pilots and runtime acceptance
 have their own gates. Corpus success alone does not establish those outcomes.
 
-Keep document vectors inline. No root v1 manifest is initialized in this origin.
-The producer's lock-only discovery barrier has landed in source and invocation
-wiring; released-validator adoption, version dispatch and operational acceptance
-remain separate. Synthetic acquisition graphs are an owner-authorized exception
-solely in guarded system temporary roots outside harvested roots. The private release does not
-authorize producer discovery, enrollment, migration, runtime operation, vendoring
-or public visibility.
+Keep document vectors inline. The root `project.yaml` declares this origin under
+Specification 1 after the producer's lock-only discovery barrier landed. Its
+source adoption, hosted qualification and producer admission remain separate.
+The owner-approved public Release 1 is vendored solely for secretless declaration
+validation; it grants no runtime operation or producer enrollment. Synthetic
+acquisition graphs remain an owner-authorized exception solely in guarded system
+temporary roots outside harvested roots. Baseline 0.2 activation is pending; this
+repository continues to adopt child-repository baseline 0.1.
 
 ## Tool maintenance and local output
 

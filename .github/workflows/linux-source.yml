@@ -21,6 +21,6 @@ jobs:
       - name: Validate exact source and complete index
         env:
           MISE_EXEC_AUTO_INSTALL: "0"
-        run: '"${{ steps.tools.outputs.python_current }}" -B scripts/validate.py'
+        run: '"${{ steps.tools.outputs.python_current }}" -I -S -B scripts/validate.py --rev "${{ github.sha }}"'
       - name: Observe the actual qualification floor on the same synthetic corpus
         run: '"${{ steps.tools.outputs.python_floor }}" -B tests/run_corpus.py --scope all'

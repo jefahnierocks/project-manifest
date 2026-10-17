@@ -1,7 +1,10 @@
-"""Source safety and pure candidate corpus; never full v1 validation."""
+"""Source safety/corpus plus independent released-contract origin self-adoption."""
 
+import argparse
 import ast
 import configparser
+from datetime import datetime, timezone
+import hashlib
 import os
 from pathlib import Path, PurePosixPath
 import platform
@@ -18,6 +21,7 @@ BACKENDS = {"python": "core:python", "gitleaks": "aqua:gitleaks/gitleaks"}
 BASELINE_FILES = {
     "README.md", "AGENTS.md", "CLAUDE.md", "STATUS.md", "LICENSE",
     ".editorconfig", ".gitignore", "mise.toml", "mise.lock", "scripts/validate.py",
+    ".gitattributes", "project.yaml",
 }
 CANDIDATE_FILES = {
     "docs/specification-candidate.md", "docs/field-table.md",
@@ -33,8 +37,22 @@ CANDIDATE_FILES = {
     "tests/compare_loaders.py", "scripts/prepare-linux-tools.py",
     "tests/test_tool_preparation.py", ".github/workflows/linux-source.yml",
     "scripts/assemble-release.py",
+    "scripts/check-self-adoption.py", "tests/test_self_adoption.py",
 }
-FILES = BASELINE_FILES | CANDIDATE_FILES
+RELEASE_PAYLOAD = {
+    "LICENSE", "docs/specification-candidate.md", "docs/field-table.md",
+    "docs/enum-provenance.md", "docs/validation-candidate.md",
+    "docs/acquisition-candidate.md", "docs/offline-binding-candidate.md",
+    "src/project_manifest/__init__.py", "src/project_manifest/__main__.py",
+    "src/project_manifest/candidate.py", "src/project_manifest/validation.py",
+    "src/project_manifest/acquire.py", "src/project_manifest/cli.py",
+    "tests/acquisition_fixtures.py", "tests/test_candidate.py", "tests/test_validation.py",
+    "tests/test_acquisition.py", "tests/test_cli.py", "tests/run_corpus.py",
+    "tests/compare_loaders.py", "release.json",
+}
+VENDOR_FILES = {"vendor/project-manifest/release-1/" + name for name in RELEASE_PAYLOAD}
+VENDOR_FILES.add("vendor/project-manifest/bootstrap/release_verifier.py")
+FILES = BASELINE_FILES | CANDIDATE_FILES | VENDOR_FILES
 PRIVATE_DATA = re.compile(
     r"/(?:Users|home)/|~[/\\]|[A-Za-z]:\\Users\\|"
     r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b|"
@@ -151,6 +169,10 @@ def check_bundle(bundle):
     require(texts["LICENSE"].startswith("MIT License\n"), "MIT license missing")
     require("private/" in texts[".gitignore"].splitlines(),
             "Unanchored private-directory ignore missing")
+    require(texts[".gitattributes"] ==
+            "/project.yaml text eol=lf -filter -ident -working-tree-encoding\n"
+            "/vendor/project-manifest/** -text -filter -ident -working-tree-encoding\n",
+            "Released bytes must not pass through checkout transformations")
     cfg = configparser.ConfigParser(interpolation=None)
     cfg.read_string("[baseline]\n" + texts[".editorconfig"])
     for key, value in {
@@ -166,11 +188,18 @@ def check_bundle(bundle):
     config = tomllib.loads(texts["mise.toml"])
     require(config.get("tools") == PINS
             and config.get("min_version") == "2026.10.8"
-            and set(config) == {"min_version", "tools", "settings"},
+            and set(config) == {"min_version", "tools", "settings", "tasks"},
             "Project declaration does not match bootstrap pins")
     require(config["settings"] == {
         "lockfile": True, "lockfile_platforms": ["macos-arm64", "linux-x64"],
+        "auto_install": False, "exec_auto_install": False,
+        "task": {"run_auto_install": False},
     }, "Project lock settings mismatch")
+    require(config["tasks"] == {"check": {
+        "description": "Validate source, complete index and released origin declaration",
+        "run": "python -I -S -B scripts/validate.py",
+        "env": {"MISE_EXEC_AUTO_INSTALL": "0"},
+    }}, "Native secretless check task differs from reviewed command")
     lock = tomllib.loads(texts["mise.lock"])
     require(lock.get("lockfile_version") == 3
             and set(lock.get("tools", {})) == set(PINS),
@@ -269,7 +298,7 @@ def run_corpus(bundle, label):
     env["PYTHONDONTWRITEBYTECODE"] = "1"
     with tempfile.TemporaryDirectory(prefix="project-manifest-candidate-") as tmp:
         temp = Path(tmp)
-        for name in sorted(CANDIDATE_FILES | {"LICENSE", "mise.toml", "mise.lock"}):
+        for name in sorted(FILES):
             path = temp / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(bundle[name])
@@ -283,6 +312,11 @@ def run_corpus(bundle, label):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--rev", help="Exact checked-out commit required for CI revision coverage")
+    args = parser.parse_args()
+    require(args.rev is None or bool(re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", args.rev)),
+            "Revision must be a complete lowercase commit identity")
     require(os.getenv("MISE_EXEC_AUTO_INSTALL") == "0",
             "Routine gate requires automatic installation disabled")
     require(platform.python_version() == PINS["python"]
@@ -305,12 +339,50 @@ def main():
     require(indexed == FILES, "Index must contain the complete candidate source set")
     worktree = {name: read_source(name) for name in sorted(names)}
     index = {name: git("show", ":" + name) for name in sorted(indexed)}
+    worktree_modes = {name: bool((ROOT / name).stat().st_mode & 0o111) for name in names}
+    index_modes = {}
+    for record in index_metadata.split(b"\0")[:-1]:
+        header, name = record.split(b"\t", 1)
+        index_modes[name.decode()] = header.split(b" ", 1)[0] == b"100755"
+    require(worktree_modes == index_modes, "Worktree/index executable modes differ")
+    require(all(worktree[name] == index[name] for name in VENDOR_FILES),
+            "Vendored release differs between source and index snapshots")
+    if args.rev:
+        require(git("rev-parse", "HEAD").decode().strip() == args.rev,
+                "Revision does not equal checked-out HEAD")
+        revision_metadata = git("ls-tree", "-r", "-z", args.rev)
+        revision_entries = {}
+        for record in revision_metadata.split(b"\0")[:-1]:
+            header, name = record.split(b"\t", 1)
+            mode, kind, oid = header.split(b" ")
+            require(kind == b"blob" and mode in {b"100644", b"100755"},
+                    "Revision contains a nonregular entry")
+            revision_entries[name.decode()] = (mode, oid)
+        require(set(revision_entries) == FILES, "Revision source set differs from candidate")
+        index_entries = {}
+        for record in index_metadata.split(b"\0")[:-1]:
+            header, name = record.split(b"\t", 1)
+            mode, oid, _ = header.split(b" ")
+            index_entries[name.decode()] = (mode, oid)
+        require(index_entries == revision_entries and worktree == index,
+                "Revision/index/worktree source bytes or modes differ")
     safety_probes()
     check_bundle(worktree)
     check_bundle(index)
     secret_scan(worktree, index)
     run_corpus(worktree, "worktree candidate")
     run_corpus(index, "full candidate index")
+    common_dir = git("rev-parse", "--path-format=absolute", "--git-common-dir").decode().strip()
+    command = [sys.executable, "-I", "-S", "-B", str(ROOT / "scripts/check-self-adoption.py"),
+               "--git-common-dir", common_dir,
+               "--reference-date", datetime.now(timezone.utc).date().isoformat(),
+               "--worktree-sha256", hashlib.sha256(worktree["project.yaml"]).hexdigest(),
+               "--staged-sha256", hashlib.sha256(index["project.yaml"]).hexdigest()]
+    if args.rev:
+        command += ["--rev", args.rev]
+    result = subprocess.run(command, check=False, capture_output=True, text=True)
+    print(result.stdout + result.stderr, end="")
+    require(result.returncode == 0, "Released-contract origin self-adoption failed")
     require(git("ls-files", "--stage", "-z") == index_metadata,
             "Index shape changed during validation")
     observed_names = set(git("ls-files", "--cached", "--others",
@@ -318,16 +390,22 @@ def main():
     require(observed_names == names, "Source names changed during validation")
     require(all(read_source(name) == data for name, data in worktree.items()),
             "Worktree bytes changed during validation")
+    require(all(bool((ROOT / name).stat().st_mode & 0o111) == mode
+                for name, mode in worktree_modes.items()),
+            "Worktree executable modes changed during validation")
     require(all(git("show", ":" + name) == data for name, data in index.items()),
             "Index bytes changed during validation")
+    if args.rev:
+        require(git("rev-parse", "HEAD").decode().strip() == args.rev,
+                "Checked-out revision changed during validation")
     print("PASS: intended layout/governance/pins/lock/links/hygiene/privacy")
     print("PASS: regular index modes; symlink/gitlink/nonregular/unmerged rejection")
     print("PASS: synthetic safety probes and fully redacted Gitleaks source scan")
     print(f"Source: {len(worktree)} worktree files; {len(index)} index files")
     print(f"Tools: Python {PINS['python']}; Gitleaks {PINS['gitleaks']}")
     print("Index coverage: full candidate source and syntax/shape corpus")
-    print("C4 activation/trusted candidate byte binding; complete v1 validity not checked")
-    print("Development policy owner-frozen; broader acquisition/conformance and release remain unqualified")
+    print("PASS: origin declaration and native conformance against pinned Release 1")
+    print("Current source corpus remains separate from origin self-adoption and future release approval")
 
 
 if __name__ == "__main__":
