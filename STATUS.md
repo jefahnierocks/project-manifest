@@ -105,3 +105,13 @@ above, using committed release bytes without an installed command. Document
 vectors remain inline; synthetic Git fixtures use guarded owned temporary roots
 outside harvested roots. Public visibility and anonymous release-byte readback
 are complete; project/consumer acceptance remains separate.
+
+## Unreleased acquisition correction
+
+The source candidate now captures Git maintenance's `loose-<hash>` pack/index
+pairs alongside `pack-<hash>` pairs under the existing descriptor and storage
+bounds. Synthetic coverage includes both object formats, revision/index
+observation equivalence, invalid storage and concurrent pack mutation. This is
+an unreleased source correction; Release 1 and its consumer bindings are
+unchanged. Source qualification and owner-approved successor release remain
+separate gates.
