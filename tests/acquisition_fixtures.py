@@ -253,8 +253,10 @@ class GitFixture:
         leaf.write_bytes(b"Synthetic pending entry\n")
         self._run(["add", "--intent-to-add", "--", path])
 
-    def pack_only(self):
+    def pack_only(self, prefix="pack"):
         """Pack every owned object, then remove only this fixture's loose files."""
+        if prefix not in {"pack", "loose"}:
+            raise AssertionError("Unsupported synthetic pack prefix")
         pack_dir = self.git_dir / "objects/pack"
         pack_dir.mkdir(exist_ok=True)
         expected = 40 if self.object_format == "sha1" else 64
@@ -262,12 +264,12 @@ class GitFixture:
                for oid in self.owned_loose_objects):
             raise AssertionError("Synthetic owned object identifier was malformed")
         objects = b"\n".join(oid.encode("ascii") for oid in sorted(self.owned_loose_objects)) + b"\n"
-        pack_oid = self._run(["pack-objects", str(pack_dir / "pack")],
+        pack_oid = self._run(["pack-objects", str(pack_dir / prefix)],
                              data=objects).strip().decode("ascii")
         if len(pack_oid) != expected or any(char not in "0123456789abcdef" for char in pack_oid):
             raise AssertionError("Synthetic pack identifier was malformed")
-        pack = pack_dir / ("pack-" + pack_oid + ".pack")
-        index = pack_dir / ("pack-" + pack_oid + ".idx")
+        pack = pack_dir / (prefix + "-" + pack_oid + ".pack")
+        index = pack_dir / (prefix + "-" + pack_oid + ".idx")
         if not pack.is_file() or not index.is_file():
             raise AssertionError("Synthetic pack plumbing omitted pack or index")
         for oid in self.owned_loose_objects:

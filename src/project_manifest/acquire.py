@@ -507,7 +507,7 @@ class FrozenStore:
                     for name in _names(fd, self.budget):
                         self.budget.check()
                         if directory == "pack":
-                            if not re.fullmatch(r"pack-[0-9a-f]{40,64}\.(?:pack|idx)", name):
+                            if not re.fullmatch(r"(?:pack|loose)-[0-9a-f]{40,64}\.(?:pack|idx)", name):
                                 continue
                         elif not re.fullmatch(r"[0-9a-f]{" + ("38" if self.algorithm == "sha1" else "62") + "}", name):
                             continue

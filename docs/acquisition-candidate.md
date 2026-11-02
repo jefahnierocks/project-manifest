@@ -85,7 +85,12 @@ validated refs/index, compressed loose-object copies and pack paths bound to
 already-open read-only file descriptors. It never evaluates source config. Replacing a source object pathname
 with an outside symlink cannot redirect a read. Loose objects are copied by
 sequential no-follow reads, with initial identity/hash captured and rechecked;
-pack files stay descriptor-bound. Raw decoded Git content is not copied to the view. Rechecks reject source metadata, layout,
+pack files stay descriptor-bound. Both `pack-<hash>` and Git maintenance's
+`loose-<hash>` pack/index pairs are captured with the same filename bounds,
+no-follow descriptor binding and storage limits. Git's
+[loose-object maintenance source](https://github.com/git/git/blob/v2.56.0/builtin/gc.c)
+uses the latter prefix; malformed names, missing/corrupt indexes and symlinked
+storage still cannot supply accepted evidence. Raw decoded Git content is not copied to the view. Rechecks reject source metadata, layout,
 object identity and index drift, including initial linked common-dir identity.
 
 The child retains HOME. System/global config is excluded only for literal object

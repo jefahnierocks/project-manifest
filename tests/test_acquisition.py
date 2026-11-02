@@ -4,6 +4,7 @@ import contextlib
 import fcntl
 import hashlib
 import io
+import itertools
 import json
 import os
 from pathlib import Path
@@ -141,8 +142,8 @@ class AcquisitionTests(unittest.TestCase):
                     self.assertEqual(result.diagnostics["manifest_blob_oid"], expected)
 
     def test_pack_only_revision_and_index_read_descriptor_bound_pack_files(self):
-        for object_format in ("sha1", "sha256"):
-            with self.subTest(object_format=object_format):
+        for object_format, prefix in itertools.product(("sha1", "sha256"), ("pack", "loose")):
+            with self.subTest(object_format=object_format, prefix=prefix):
                 fixture = self.fixture(object_format=object_format)
                 staged_data = DATA.replace(b"Synthetic example", b"Synthetic packed index")
                 fixture.set_index(files(staged_data))
@@ -150,7 +151,7 @@ class AcquisitionTests(unittest.TestCase):
                           for mode in ("rev", "staged")}
                 self.assertEqual(before["rev"].record["project"]["display_name"], "Synthetic example")
                 self.assertEqual(before["staged"].record["project"]["display_name"], "Synthetic packed index")
-                pack, pack_index = fixture.pack_only()
+                pack, pack_index = fixture.pack_only(prefix=prefix)
                 self.assertTrue(pack.is_file())
                 self.assertTrue(pack_index.is_file())
                 for oid in fixture.owned_loose_objects:
@@ -181,6 +182,44 @@ class AcquisitionTests(unittest.TestCase):
                             self.assertEqual(after.diagnostics["observation_digest"],
                                              before[mode].diagnostics["observation_digest"])
                 self.assertTrue(pack_reads)
+
+    def test_maintenance_pack_invalid_storage_is_not_checked(self):
+        for kind in ("bad-prefix", "bad-hash", "missing-index", "corrupt-index", "symlink-index"):
+            with self.subTest(kind=kind):
+                fixture = self.fixture()
+                pack, index = fixture.pack_only(prefix="loose")
+                if kind in {"bad-prefix", "bad-hash"}:
+                    for path in (pack, index):
+                        name = path.name.replace("loose-", "other-") if kind == "bad-prefix" else (
+                            path.stem[:-1] + path.suffix)
+                        path.rename(path.with_name(name))
+                elif kind == "missing-index":
+                    index.unlink()
+                elif kind == "corrupt-index":
+                    index.unlink()
+                    index.write_bytes(b"Synthetic invalid index\n")
+                else:
+                    target = fixture.root / "synthetic-index-target"
+                    index.rename(target)
+                    index.symlink_to(target)
+                self.rejected(self.observe(fixture), "NOT_CHECKED", not_checked=True)
+
+    def test_maintenance_pack_mutation_is_not_checked(self):
+        fixture = self.fixture()
+        pack, _ = fixture.pack_only(prefix="loose")
+        original = acquisition.GitView.run
+        changed = False
+        def mutate(view, args, *call_args, **kwargs):
+            nonlocal changed
+            result = original(view, args, *call_args, **kwargs)
+            if not changed and args[0] == "ls-tree":
+                changed = True
+                with pack.open("ab") as stream:
+                    stream.write(b"Synthetic changed pack\n")
+            return result
+        with patch.object(acquisition.GitView, "run", new=mutate):
+            self.rejected(self.observe(fixture), "NOT_CHECKED", not_checked=True)
+        self.assertTrue(changed)
 
     def test_many_loose_objects_do_not_consume_one_descriptor_per_object(self):
         fixture = self.fixture()

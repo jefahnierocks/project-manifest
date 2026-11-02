@@ -161,6 +161,61 @@ class ReleaseBindingTests(unittest.TestCase):
         self.assertEqual(self.accepted(self.verify(candidate)).diagnostics()["scope"],
                          "candidate-offline-byte-binding")
 
+    def test_successor_profile_keeps_specification_and_observation_protocol_one(self):
+        fixture = self.released_fixture()
+        fixture.table.update(format="project-manifest-release-2", release_id="2")
+        fixture.write_table()
+        result = self.accepted(verify_release(
+            fixture.root, expected_digest=fixture.expected,
+            expected_format="project-manifest-release-2"))
+        self.assertEqual(result.descriptor["spec_version"], "1")
+        self.assertEqual(result.descriptor["observation_protocol"],
+                         "project-manifest-git-observation-1")
+        self.assertEqual(result.diagnostics()["scope"], "project-manifest-release-byte-binding-2")
+        self.assertEqual(result.diagnostics()["release_approval"], "not_checked")
+        self.assertEqual(tuple(row["path"] for row in result.descriptor["files"]), PAYLOAD_FILES)
+        fixture.replace_payload("src/project_manifest/acquire.py", b"Synthetic changed bytes\n")
+        self.assertEqual(verify_release(
+            fixture.root, expected_digest=fixture.expected,
+            expected_format="project-manifest-release-2").findings, ("PAYLOAD_DIGEST",))
+
+    def test_release_profiles_require_their_exact_independently_selected_identity(self):
+        for release in ("1", "2"):
+            fixture = self.released_fixture()
+            fixture.table.update(format="project-manifest-release-" + release, release_id=release)
+            fixture.write_table()
+            for selected in ("candidate-binding-1", "project-manifest-release-1",
+                             "project-manifest-release-2"):
+                result = verify_release(fixture.root, expected_digest=fixture.expected,
+                                        expected_format=selected)
+                if selected == fixture.table["format"]:
+                    self.accepted(result)
+                else:
+                    self.assertEqual(self.rejected(result).findings, ("TABLE_IDENTITY",))
+            fixture.table["release_id"] = "2" if release == "1" else "1"
+            fixture.write_table()
+            self.assertEqual(verify_release(
+                fixture.root, expected_digest=fixture.expected,
+                expected_format="project-manifest-release-" + release).findings, ("TABLE_IDENTITY",))
+
+    def test_successor_keeps_closed_headers_rows_and_external_digest(self):
+        for change, code in (({"spec_version": "2"}, "TABLE_IDENTITY"),
+                             ({"observation_protocol": "other"}, "TABLE_IDENTITY"),
+                             ({"approved": True}, "TABLE_FORMAT")):
+            fixture = self.released_fixture()
+            fixture.table.update(format="project-manifest-release-2", release_id="2")
+            fixture.table.update(change)
+            fixture.write_table()
+            self.assertEqual(verify_release(
+                fixture.root, expected_digest=fixture.expected,
+                expected_format="project-manifest-release-2").findings, (code,))
+        fixture = self.released_fixture()
+        fixture.table.update(format="project-manifest-release-2", release_id="2")
+        fixture.write_table()
+        self.assertEqual(verify_release(
+            fixture.root, expected_digest="0" * 64,
+            expected_format="project-manifest-release-2").findings, ("EXPECTED_DIGEST",))
+
     def test_unknown_expected_profile_is_unavailable_before_any_read(self):
         for value in ("other", "synthetic-raw-profile", None, False, [], {}):
             with self.subTest(value=type(value).__name__), \
@@ -846,7 +901,7 @@ class AssemblyTests(unittest.TestCase):
         bundle = fixture.path / "build" / result.bundle_name
         self.assertFalse((bundle.parent / "staging").exists())
         checked = verify_release(str(bundle), expected_digest=result.table_sha256,
-                                  expected_format="project-manifest-release-1")
+                                  expected_format="project-manifest-release-2")
         self.assertEqual(checked.exit_code, 0)
 
     def test_ignore_projection_classifies_ignored_directories_and_unignored_control(self):
@@ -950,7 +1005,7 @@ class AssemblyTests(unittest.TestCase):
                 for name in PAYLOAD_FILES:
                     self.assertEqual((a / name).read_bytes(), fixture.files[name].data)
                 checked = verify_release(str(a), expected_digest=first.table_sha256,
-                                          expected_format="project-manifest-release-1")
+                                          expected_format="project-manifest-release-2")
                 self.assertEqual(checked.exit_code, 0)
                 self.assertEqual((fixture.git_dir / "index").read_bytes(), before)
 
@@ -1083,7 +1138,7 @@ class AssemblyTests(unittest.TestCase):
         bundle = self.bundle(fixture, result)
         (bundle / PAYLOAD_FILES[0]).write_bytes(b"Synthetic payload tamper\n")
         checked = verify_release(str(bundle), expected_digest=result.table_sha256,
-                                  expected_format="project-manifest-release-1")
+                                  expected_format="project-manifest-release-2")
         self.assertEqual(checked.exit_code, 1)
 
 

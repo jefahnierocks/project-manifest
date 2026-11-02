@@ -105,3 +105,28 @@ above, using committed release bytes without an installed command. Document
 vectors remain inline; synthetic Git fixtures use guarded owned temporary roots
 outside harvested roots. Public visibility and anonymous release-byte readback
 are complete; project/consumer acceptance remains separate.
+
+## Unreleased acquisition correction
+
+The source candidate now captures Git maintenance's `loose-<hash>` pack/index
+pairs alongside `pack-<hash>` pairs under the existing descriptor and storage
+bounds. Synthetic coverage includes both object formats, revision/index
+observation equivalence, invalid storage and concurrent pack mutation. This is
+an unreleased source correction; Release 1 and its consumer bindings are
+unchanged. Source qualification and owner-approved successor release remain
+separate gates.
+
+## Unapproved Release 2 preparation
+
+The successor candidate keeps Specification 1, observation protocol 1 and the
+same closed twenty-file payload inventory. A separately selected
+`project-manifest-release-2` bootstrap profile and origin assembler bind release
+identity `2`, including the maintenance-pack acquisition correction above.
+Release 1's published assets, frozen vendor snapshot and self-adoption binding
+are unchanged. The old profile remains strict and independently tested.
+
+This source does not approve or publish a release. Final committed-source
+assembly, complete reference corpus, native and hosted qualification, artifact
+review and the repository owner's explicit release approval remain required.
+Consumer re-vendoring and adoption follow that immutable publication under
+their own source and execution gates.

@@ -33,6 +33,12 @@ and [STATUS.md](STATUS.md). [AGENTS.md](AGENTS.md) is the working contract.
 - `AGENTS.md`: canonical contract; `CLAUDE.md` imports it.
 - `STATUS.md`: status of record; `LICENSE`: MIT license.
 
+An [unapproved Release 2 candidate](STATUS.md#unapproved-release-2-preparation)
+prepares the maintenance-pack reader repair with a distinct artifact identity.
+It retains Specification 1 and observation protocol 1. Published Release 1 and
+its frozen self-adoption snapshot remain unchanged; source checks do not approve
+publication or consumer adoption.
+
 ## Setup and check
 
 Use Git and mise 2026.10.8 or later from the repository root. The owner must
