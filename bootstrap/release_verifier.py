@@ -36,7 +36,15 @@ RELEASE_HEADERS = {
     **HEADERS, "format": "project-manifest-release-1", "release_id": "1",
     "observation_protocol": "project-manifest-git-observation-1",
 }
-BINDING_FORMATS = frozenset({"candidate-binding-1", "project-manifest-release-1"})
+RELEASE_2_HEADERS = {
+    **RELEASE_HEADERS, "format": "project-manifest-release-2", "release_id": "2",
+}
+BINDING_HEADERS = {
+    "candidate-binding-1": HEADERS,
+    "project-manifest-release-1": RELEASE_HEADERS,
+    "project-manifest-release-2": RELEASE_2_HEADERS,
+}
+BINDING_FORMATS = frozenset(BINDING_HEADERS)
 DIRECTORIES = frozenset(
     "/".join(path.split("/")[:depth])
     for path in PAYLOAD_FILES for depth in range(1, len(path.split("/")))
@@ -55,6 +63,7 @@ class VerificationResult:
             "scope": {
                 "candidate-binding-1": "candidate-offline-byte-binding",
                 "project-manifest-release-1": "project-manifest-release-byte-binding-1",
+                "project-manifest-release-2": "project-manifest-release-byte-binding-2",
             }.get(self.binding_format, "offline-byte-binding-protocol-unavailable"),
             "exit_code": self.exit_code, "findings": list(self.findings),
             "bytes_verified": self.exit_code == 0,
@@ -189,7 +198,7 @@ def canonical_table_bytes(record):
 
 
 def _descriptor(data, *, expected_format="candidate-binding-1"):
-    headers = HEADERS if expected_format == "candidate-binding-1" else RELEASE_HEADERS
+    headers = BINDING_HEADERS[expected_format]
     try:
         record = json.loads(data.decode("ascii"), object_pairs_hook=_object)
         canonical = canonical_table_bytes(record)

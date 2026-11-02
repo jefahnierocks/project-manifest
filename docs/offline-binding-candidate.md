@@ -117,7 +117,7 @@ installer, vendoring command, CI change or runtime operation.
 
 ## Released source descriptor profile
 
-The bootstrap now accepts a second explicitly selected engineering profile through
+The bootstrap accepts the immutable Release 1 engineering profile through
 verify_release(root, expected_digest=..., expected_format="project-manifest-release-1").
 The default and standalone candidate invocation retain candidate-binding-1.
 An unknown expected_format returns BINDING_PROTOCOL / 2 before filesystem access.
@@ -145,10 +145,25 @@ No released artifact, export, consumer binding, installation or publication is
 created by this source profile. Actual support/qualification receipts, final
 immutable release/trust and normal consumer acceptance remain separate.
 
+The successor source candidate adds an independently selected
+`project-manifest-release-2` profile with string `release_id` `2`. It retains
+Specification 1 and `project-manifest-git-observation-1`; the artifact identity
+does not introduce Specification 2 or a new observation protocol. Its diagnostic
+scope is `project-manifest-release-byte-binding-2`. The nine closed fields,
+twenty payload paths, canonical encoding, hash domain, bounds and no-follow/
+tamper checks are identical to the Release 1 profile. Each profile requires its
+exact release identity and refuses every other profile without fallback.
+Candidate invocation still defaults to `candidate-binding-1`.
+
+This is unapproved successor preparation. Release 1 artifacts, bootstrap and
+consumer pins stay immutable. A consumer needs the separately reviewed successor
+bootstrap, descriptor and external digest after owner-approved publication;
+source availability alone does not authorize replacing its vendored bytes.
+
 ## Origin-only candidate assembler source
 
 The origin script scripts/assemble-release.py prepares an unapproved local
-candidate; it is not distributed as payload or loaded by consumers. Its API is
+Release 2 candidate; it is not distributed as payload or loaded by consumers. Its API is
 assemble_candidate(source_root, expected_revision=..., output_parent=...,
 common_dir=...). The CLI derives its own source root and takes --source-revision,
 --output-parent and optional --git-common-dir. Assembly execution still needs

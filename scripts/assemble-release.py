@@ -243,7 +243,7 @@ def assemble_candidate(source_root, *, expected_revision, output_parent, common_
             store.materialize(mirror)
             view = acquisition.GitView(store, mirror, budget)
             revision, tree_oid, source, modes, payload = _capture(store, view, expected_revision, projection)
-            table = {**binding.RELEASE_HEADERS, "source_revision": revision,
+            table = {**binding.RELEASE_2_HEADERS, "source_revision": revision,
                      "files": [{"path": name, "bytes": len(payload[name]),
                                 "sha256": hashlib.sha256(payload[name]).hexdigest()}
                                for name in binding.PAYLOAD_FILES]}
@@ -268,7 +268,7 @@ def assemble_candidate(source_root, *, expected_revision, output_parent, common_
             finally:
                 os.close(staging_fd)
             checked = binding.verify_release(str(stage), expected_digest=digest,
-                                             expected_format="project-manifest-release-1")
+                                             expected_format="project-manifest-release-2")
             require(checked.exit_code == 0, "ASSEMBLY_VERIFY")
             _literal_clean(store, source, modes)
             _namespace_clean(store, view, projection, source)
@@ -298,7 +298,7 @@ def assemble_candidate(source_root, *, expected_revision, output_parent, common_
         if _close_owned_fds([closing_parent]):
             raise Refusal("ASSEMBLY_UNAVAILABLE", 2)
         checked = binding.verify_release(str(stage), expected_digest=digest,
-                                         expected_format="project-manifest-release-1")
+                                         expected_format="project-manifest-release-2")
         require(checked.exit_code == 0, "ASSEMBLY_VERIFY")
         require(_output_directory_identity(os.stat("staging", dir_fd=container_fd,
                 follow_symlinks=False)) == staging_identity, "OUTPUT_CHANGED")
